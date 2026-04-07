@@ -9,10 +9,8 @@ const followerBtn = document.getElementById('follower-btn');
 const followingBtn = document.getElementById('following-btn');
 let followDataArr = null;
 
-
 const profileImg = document.getElementById('profile-img');
 const userBio = document.getElementById('userBio');
-
 
 const modalPreviewImg = document.getElementById('modal-preview-img');
 const fileUpload = document.getElementById('file-upload');
@@ -22,8 +20,6 @@ const bioInput = document.getElementById('bio-input');
 let currentEditingCard = null;
 let currentOriginalContent = '';
 
-
-
 // ---------UTILITY FUNCTIONS ARE HERE -----------------------
 
 function getUserFromLocalStorage() {
@@ -32,6 +28,7 @@ function getUserFromLocalStorage() {
 }
 
 function filterImageAddress(imageUrl) {
+    if (!imageUrl) return null;
     imageUrl = imageUrl.replace(/\\/g, '/');
     imageUrl = imageUrl.split('uploads').pop();
     imageUrl = imageUrl.replace(/^\/+/, '');
@@ -75,9 +72,7 @@ async function handleDelete(card, e) {
     }
 }
 
-
 async function submitEditPost(postId, formData) {
-
     try {
         const response = await fetch(`http://localhost:8000/post/edit/${postId}`, {
             method: 'PUT',
@@ -99,7 +94,6 @@ async function submitEditPost(postId, formData) {
     }
 }
 
-
 function renderEditForm(card, postData) {
     // 2. CHECK: If another card is already being edited, revert it first
     if (currentEditingCard && currentEditingCard !== card) {
@@ -115,7 +109,7 @@ function renderEditForm(card, postData) {
     const editForm = document.createElement('form');
     editForm.className = 'p-6 flex flex-col gap-5';
 
-    // --- UI Sections (Same as your original code) ---
+    // --- UI Sections ---
     const imgWrapper = document.createElement('div');
     imgWrapper.className = 'w-full aspect-[4/3] rounded-xl overflow-hidden bg-black relative border border-[#333]';
     imgWrapper.innerHTML = `
@@ -196,7 +190,6 @@ function likePostEvent(e) {
     e.currentTarget;
     console.log("Post Like => ", e.currentTarget.id)
 }
-
 
 // -------------THIS HELP TO LOAD THE FOLLOW AND FOLLOWING DATA---------------
 
@@ -295,21 +288,17 @@ async function getFollowData() {
             userImage.src = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTCF88SudZwAw_SCSvtsW_ReFZljFrACF38qQ&s"
         }
         else {
-
             userImage.src = `http://localhost:8000/uploads/${imageUrl}`
         }
         console.log("=========>>", result.followNfollowing)
         if (result.followNfollowing) {
             followDataArr = result.followNfollowing;
-
-
         }
         else {
             follow.textContent = '0';
             following.textContent = '0'
         }
         userBio.textContent = user.bio;
-
 
     } catch (error) {
         console.log("Error in getting Follow Data ", error)
@@ -325,7 +314,9 @@ async function getAccountPost() {
             }
         })
         const result = await response.json();
-        return result.posts;
+        console.log("Account post is ", result)
+        // Accessing postsWithComments array based on new structure
+        return result.postsWithComments || result.posts || [];
 
     } catch (error) {
         console.log("Error in loading the account post is ", error)
@@ -352,7 +343,7 @@ function createPostCard(postData) {
              onerror="this.src='${fallbackImage}'"
              class="w-12 h-12 rounded-full object-cover border border-[#3e3e3e]" />
         <div class="flex flex-col">
-            <span class="font-bold text-base text-white">${postData.username || 'Muhammad'}</span>
+            <span class="font-bold text-base text-white">${postData.username || user.username || 'User'}</span>
             <span class="text-xs text-gray-400">Lahore, Pakistan</span>
         </div>
     `;
@@ -364,7 +355,6 @@ function createPostCard(postData) {
     toggleMenuBtn.className = 'text-gray-400 hover:text-white cursor-pointer p-2 rounded-full hover:bg-neutral-800 transition-all';
     toggleMenuBtn.style.background = 'transparent';
     toggleMenuBtn.style.border = 'none';
-    // FIXED SVG: Removed spaces from tags and attributes
     toggleMenuBtn.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle>
@@ -386,6 +376,7 @@ function createPostCard(postData) {
     deleteBtn.className = 'text-left text-sm font-medium px-6 py-4 hover:bg-neutral-800 transition-colors cursor-pointer text-red-500';
     deleteBtn.style.background = 'transparent';
     deleteBtn.style.border = 'none';
+    deleteBtn.id = postData._id;
     deleteBtn.onclick = (e) => { handleDelete(card, e); };
 
     dropdown.append(editBtn, deleteBtn);
@@ -396,7 +387,8 @@ function createPostCard(postData) {
     const imgWrap = document.createElement('div');
     imgWrap.className = 'w-full aspect-[4/3] bg-black overflow-hidden';
     const image = document.createElement('img');
-    image.src = `http://localhost:8000/uploads/${postData.imageUrl}`;
+    const cleanImageSrc = filterImageAddress(postData.imageUrl);
+    image.src = `http://localhost:8000/uploads/${cleanImageSrc}`;
     image.className = 'w-full h-full object-cover';
     image.onerror = () => image.src = fallbackImage;
     imgWrap.appendChild(image);
@@ -430,6 +422,22 @@ function createPostCard(postData) {
     commentList.className = 'max-h-40 overflow-y-auto flex flex-col gap-2 pr-2';
     commentList.style.scrollbarWidth = 'thin';
 
+    // RENDER EXISTING COMMENTS
+    if (postData.comments && postData.comments.length > 0) {
+        postData.comments.forEach(comment => {
+            const div = document.createElement('div');
+            div.className = 'flex flex-col gap-1';
+
+            const commentUsername = comment.user && comment.user.username ? comment.user.username : (user && user.username ? user.username : 'User');
+
+            div.innerHTML = `
+                <div class="text-xs text-gray-300 bg-[#262626] p-2 rounded">
+                    <span class="font-bold text-white mr-1">${commentUsername}</span> ${comment.commentText}
+                </div>`;
+            commentList.appendChild(div);
+        });
+    }
+
     const inputRow = document.createElement('div');
     inputRow.className = 'flex items-center gap-2 bg-[#1a1a1a] rounded-lg px-3 py-2 border border-[#333]';
     inputRow.innerHTML = `
@@ -439,7 +447,22 @@ function createPostCard(postData) {
     const input = inputRow.querySelector('input');
     const sendBtn = inputRow.querySelector('button');
 
-    const addComment = (val, isReply = false) => {
+    const addComment = async (val, isReply = false) => {
+        // Post comment to backend
+        try {
+            await fetch(`http://localhost:8000/post/user/comment/${user._id}`, {
+                method: 'POST',
+                headers: {
+                    "authorization": `Bearer ${localStorage.getItem('token')}`,
+                    "content-type": "application/json"
+                },
+                body: JSON.stringify({ postId: postData._id, commentText: val })
+            });
+        } catch (error) {
+            console.log("Comment Posting Error is ", error.message);
+        }
+
+        // Optimistic UI Append
         const div = document.createElement('div');
         div.className = `flex flex-col gap-1 ${isReply ? 'ml-6 border-l-2 border-[#333] pl-2' : ''}`;
         div.innerHTML = `
@@ -455,7 +478,12 @@ function createPostCard(postData) {
     };
 
     input.id = `input-${postData._id}`;
-    sendBtn.onclick = () => { if (input.value.trim()) { addComment(input.value, input.value.startsWith('@')); input.value = ''; } };
+    sendBtn.onclick = () => {
+        if (input.value.trim()) {
+            addComment(input.value, input.value.startsWith('@'));
+            input.value = '';
+        }
+    };
 
     footer.append(likeSection, textContent, commentSection);
     commentSection.append(commentList, inputRow);
@@ -473,16 +501,11 @@ async function renderAccountPosts() {
     const postArea = document.getElementById('post-area');
     postArea.innerHTML = '';
 
-    if (posts) {
+    if (posts && posts.length > 0) {
         emptyPostArea.innerHTML = '';
         posts.forEach(post => {
-            // Destructure the object to get the 'card' element
-            const { card, likeBtn, editBtn, deleteBtn } = createPostCard(post);
-
-            // FIX: Append ONLY the card node
+            const { card } = createPostCard(post);
             postArea.appendChild(card);
-
-
         });
     }
 
@@ -498,7 +521,6 @@ async function updateProfileStatus(formData, event) {
         const response = await fetch(`http://localhost:8000/user/profile/${user._id}`, {
             method: 'PUT',
             headers: {
-
                 "authorization": `Bearer ${localStorage.getItem('token')}`
             },
             body: formData
@@ -518,22 +540,19 @@ function editProfile(e) {
 }
 
 function toggleModal(event) {
-    event.preventDefault()
+    if (event) event.preventDefault();
     editModal.classList.toggle('hidden');
     editModal.classList.toggle('flex');
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 }
 
 function editModelHandler(e) {
-
     if (e.target === editModal) {
         toggleModal(e);
     }
-
 }
 
 function fileUploadHandler(e) {
-
     const file = this.files[0];
     if (file) {
         const reader = new FileReader();
@@ -542,13 +561,9 @@ function fileUploadHandler(e) {
         }
         reader.readAsDataURL(file);
     }
-
 }
 
 async function saveProfileHandler(event) {
-    //send api request 
-    //recive the response 
-    //show the src through this one
     event.preventDefault();
     const updatedBio = bioInput.value;
     const updatedProfilePic = fileUpload.files[0];
@@ -556,41 +571,45 @@ async function saveProfileHandler(event) {
     const user = getUserFromLocalStorage();
     formData.append('bio', updatedBio);
     formData.append('userId', user._id);
+
     if (updatedProfilePic) {
         formData.append('image', updatedProfilePic)
     }
+
     const result = await updateProfileStatus(formData, event);
-    editProfilePicLocalStorage(result.profilePicPath, result.bio)
-    console.log("Result is ", result);
+    if (result) {
+        editProfilePicLocalStorage(result.profilePicPath, result.bio)
+        console.log("Result is ", result);
+    }
     toggleModal(event);
 }
 
 editProfileBtn.addEventListener('click', editProfile);
 
-
-cancelProfileBtn.addEventListener('click', toggleModal)
-
+cancelProfileBtn.addEventListener('click', toggleModal);
 
 closeModalBtn.addEventListener('click', toggleModal);
 
-
 editModal.addEventListener('click', editModelHandler);
-
 
 fileUpload.addEventListener('change', fileUploadHandler);
 
 followerBtn.addEventListener('click', () => {
-    renderFollowData(followDataArr.followers, "follow")
-})
+    if (followDataArr && followDataArr.followers) {
+        renderFollowData(followDataArr.followers, "follow")
+    }
+});
+
 followingBtn.addEventListener('click', () => {
-    renderFollowData(followDataArr.following, "following")
-})
+    if (followDataArr && followDataArr.following) {
+        renderFollowData(followDataArr.following, "following")
+    }
+});
 
 saveProfileBtn.addEventListener('click', async (event) => {
     event.preventDefault()
     await saveProfileHandler(event)
 });
-
 
 document.addEventListener('DOMContentLoaded', async () => {
     await getFollowData();

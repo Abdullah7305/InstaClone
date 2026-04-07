@@ -48,13 +48,14 @@ async function postComment(postId, commentText) {
         });
         const result = await response.json();
         console.log("Result for comment posting is ", result);
+
+        // Optional: You can trigger a re-render here to show the new comment instantly
+        // renderProfilePost(accountId, document.getElementById('username-profile').textContent, result.img);
+
     } catch (error) {
         console.log("Comment Posting Error is ", error.message);
     }
 }
-
-
-
 
 // --- Main Application Logic ---
 
@@ -86,7 +87,7 @@ async function profileUser() {
         // Logic to show posts: Pass username and img as extra parameters
         if (result.accountStatus === 'public' || result.requestStatus === 'Accepted') {
             await renderProfilePost(accountId, result.username, result.img);
-           
+
         } else {
             postArea.innerHTML = `<p class="text-center py-20 text-gray-500">This Account is Private</p>`;
         }
@@ -143,8 +144,8 @@ async function renderProfilePost(id, profileUsername, profilePic) {
     const result = await getUserProfilePost(id);
     postArea.innerHTML = '';
 
-    // Access the posts array from { message: 'Success', posts: [...] }
-    const postsArray = result.posts || [];
+
+    const postsArray = result.postsWithComments || [];
 
     if (postsArray.length === 0) {
         postArea.innerHTML = '<p class="text-gray-500 text-center w-full py-10">No posts yet.</p>';
@@ -167,7 +168,6 @@ function createPostCard(postData, username, pfp) {
     card.style.maxWidth = '450px';
     card.style.background = 'var(--card)';
     card.style.border = '1px solid var(--border)';
-
 
     const header = document.createElement('div');
     header.className = 'flex items-center p-3 border-b border-[#2e2e2e]';
@@ -224,6 +224,25 @@ function createPostCard(postData, username, pfp) {
     commentList.className = 'max-h-32 overflow-y-auto py-2 flex flex-col gap-2 custom-scrollbar';
     commentList.style.scrollbarWidth = 'thin';
 
+
+    if (postData.comments && postData.comments.length > 0) {
+        postData.comments.forEach(comment => {
+            const commentDiv = document.createElement('div');
+            commentDiv.className = 'text-sm mb-1';
+
+
+            const commentUsername = comment.user && comment.user.username ? comment.user.username : (getUserFromLocalStorage()?.username || 'User');
+
+            commentDiv.innerHTML = `
+                <span class="font-bold text-gray-200 mr-2">${commentUsername}</span>
+                <span class="text-gray-300">${comment.commentText}</span>
+            `;
+            commentList.appendChild(commentDiv);
+        });
+    } else {
+        commentList.innerHTML = `<span class="text-xs text-gray-500 italic">No comments yet.</span>`;
+    }
+
     const inputRow = document.createElement('div');
     inputRow.className = 'flex items-center gap-2 bg-[#1a1a1a] rounded-lg px-3 py-2 border border-[#333]';
 
@@ -234,7 +253,6 @@ function createPostCard(postData, username, pfp) {
 
     const sendBtn = document.createElement('button');
     sendBtn.className = 'text-pink-500 hover:scale-110 transition-transform cursor-pointer bg-transparent border-none p-0 flex items-center';
-
 
     const svgNS = "http://www.w3.org/2000/svg";
     const sendSvg = document.createElementNS(svgNS, "svg");
@@ -257,16 +275,32 @@ function createPostCard(postData, username, pfp) {
 
     inputRow.append(commentInput, sendBtn);
 
-
     sendBtn.addEventListener('click', () => {
         const val = commentInput.value.trim();
         if (val) {
             postComment(postData._id, val);
 
-            commentInput.value = ''; // clear input after sending
+
+            const newCommentDiv = document.createElement('div');
+            newCommentDiv.className = 'text-sm mb-1';
+            const storedUser = getUserFromLocalStorage();
+            const commentUsername = storedUser && storedUser.username ? storedUser.username : 'User';
+            newCommentDiv.innerHTML = `
+                <span class="font-bold text-gray-200 mr-2">${commentUsername}</span>
+                <span class="text-gray-300">${val}</span>
+            `;
+
+
+            if (postData.comments.length === 0 && commentList.querySelector('.italic')) {
+                commentList.innerHTML = '';
+            }
+
+            commentList.appendChild(newCommentDiv);
+
+            commentInput.value = '';
         }
         else {
-            console.log("Not Comment text there")
+            console.log("No Comment text there")
         }
     });
 
@@ -277,12 +311,10 @@ function createPostCard(postData, username, pfp) {
     return { card };
 }
 
-
 followBtn.addEventListener('click', async () => {
     await followRequest();
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
     await profileUser();
-
 });
