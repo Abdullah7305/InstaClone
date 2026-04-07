@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="http://localhost:8000/socket.io/socket.io.js"></script>
+    <title>Profile - Logged In User</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=DM+Sans:wght@300;400;500;600&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --surface: #161616;
+            --card: #1c1c1c;
+            --hover: #222222;
+            --border: #2e2e2e;
+            --accent: #e1306c;
+            --accent2: #f77737;
+            --txt: #f0f0f0;
+            --muted: #686868;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--txt);
+            min-height: 100vh;
+        }
+
+        /* grain */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+            opacity: .4;
+        }
+
+        .logo {
+            font-family: 'Pacifico', cursive;
+            background: linear-gradient(90deg, #f09433, #e6683c, #dc2743, #cc2366);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* navbar */
+        nav {
+            height: 56px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-inner {
+            max-width: 640px;
+            width: 100%;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            padding: 6px;
+            border-radius: 8px;
+            transition: color .15s, background .15s;
+        }
+
+        .nav-icon-btn:hover {
+            color: var(--txt);
+            background: var(--hover);
+        }
+
+        /* IG ring */
+        .ig-ring {
+            padding: 2.5px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+            display: inline-flex;
+        }
+
+        .ig-ring-inner {
+            background: var(--surface);
+            padding: 2px;
+            border-radius: 50%;
+        }
+
+        /* profile header */
+        .profile-header {
+            max-width: 640px;
+            margin: 28px auto 0;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            animation: riseUp .4s ease both;
+        }
+
+        @keyframes riseUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .profile-header img {
+            width: 86px;
+            height: 86px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .profile-info {
+            flex: 1;
+        }
+
+        .profile-username {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        /* stats row */
+        .stats-row {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 10px;
+        }
+
+        .stat {
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .stat-num {
+            font-size: .95rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .stat-lbl {
+            font-size: .72rem;
+            color: var(--muted);
+        }
+
+        /* bio */
+        .bio {
+            font-size: .82rem;
+            color: var(--muted);
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+
+        /* edit profile btn */
+        .edit-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: .8rem;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--card);
+            color: var(--txt);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: border-color .2s, background .2s;
+        }
+
+        .edit-btn:hover {
+            border-color: var(--accent);
+            background: var(--hover);
+        }
+
+        /* divider */
+        .divider {
+            max-width: 640px;
+            margin: 80px auto 0;
+            padding: 0 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* tabs */
+        .tabs {
+            max-width: 640px;
+            margin: 0 auto;
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: .8rem;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: color .2s, border-color .2s;
+        }
+
+        .tab.active {
+            color: var(--txt);
+            border-bottom-color: var(--txt);
+        }
+
+        .tab:hover {
+            color: var(--txt);
+        }
+
+        /* post grid */
+        .post-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, 250px);
+            gap: 16px;
+            justify-content: center;
+            /* This now works perfectly */
+            padding: 16px;
+        }
+
+        .edit-modal-btn-margin {
+            margin: 15px;
+        }
+
+        .post-thumb {
+            aspect-ratio: 1/1;
+            overflow: hidden;
+            background: var(--card);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .post-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform .3s ease;
+        }
+
+        .post-thumb:hover img {
+            transform: scale(1.05);
+        }
+
+        .post-thumb-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, .45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            opacity: 0;
+            transition: opacity .2s ease;
+            color: #fff;
+            font-size: .8rem;
+            font-weight: 600;
+        }
+
+        .post-thumb:hover .post-thumb-overlay {
+            opacity: 1;
+        }
+
+        /* empty posts */
+        .empty-posts {
+            max-width: 640px;
+            margin: 40px auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--muted);
+        }
+
+        .empty-posts svg {
+            opacity: .25;
+        }
+
+        .empty-posts p {
+            font-size: .85rem;
+        }
+
+        .fade-out {
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        #post-area {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, 400px);
+            /* Strict 400px width per column */
+            gap: 20px;
+            justify-content: center;
+            /* Centers the cards horizontally */
+            padding: 20px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0
+            }
+
+            to {
+                opacity: 1
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn .5s ease both;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav>
+        <div class="nav-inner">
+            <a href="home.html" style="text-decoration:none;">
+                <span class="logo" style="font-size:1.3rem;">Instaclone</span>
+            </a>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <a href="home.html"
+                    style="text-decoration:none; font-size:.8rem; font-weight:600; color:var(--muted); transition:color .2s;"
+                    onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">Home</a>
+                <button class="nav-icon-btn">
+                    <i data-lucide="heart" style="width:20px;height:20px;"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Profile Header -->
+    <header class="profile-header">
+
+        <!-- Avatar -->
+        <div class="ig-ring">
+            <div class="ig-ring-inner">
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTCF88SudZwAw_SCSvtsW_ReFZljFrACF38qQ&s"
+                    id="profile-img" alt="Profile" />
+            </div>
+        </div>
+
+        <!-- Info -->
+        <div class="profile-info">
+            <div class="profile-username" id="username-profile">Abdullah_2026</div>
+
+            <div class="stats-row">
+                <div class="stat">
+                    <span class="stat-num" id="posts-count"></span>
+                    <span class="stat-lbl">Posts</span>
+                </div>
+                <div class="stat" id="followersCount">
+                    <span class="stat-num" id="followersNum"></span>
+                    <button class="stat-lbl" id="follower-btn">Followers</button>
+                </div>
+                <div class="stat" id="followingCount">
+                    <span class="stat-num" id="followingNum"></span>
+                    <button class="stat-lbl" id="following-btn">Following</button>
+                </div>
+            </div>
+
+            <p class="bio" id="userBio"></p>
+
+            <button class="edit-btn" id="editProfileBtn">
+                <i data-lucide="pencil" style="width:13px;height:13px;"></i>
+                Edit Profile
+            </button>
+
+
+        </div>
+
+        <div id="edit-modal"
+            class="fixed inset-0 z-[1000] hidden bg-black/80 backdrop-blur-sm grid place-items-center p-4">
+            <div class="bg-[#161616] border border-[#2e2e2e] rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+
+                <div class="flex items-center justify-between p-3 border-b border-[#2e2e2e]">
+                    <h3 class="text-base font-semibold text-white">Edit Profile</h3>
+                    <button id="close-modal-btn"
+                        class="p-1.5 rounded-full hover:bg-[#222222] text-[#686868] hover:text-white transition-colors cursor-pointer">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div class="p-4 space-y-4">
+
+                    <div class="flex flex-col items-center space-y-2">
+                        <img id="modal-preview-img" src="" alt="Preview"
+                            class="w-20 h-20 rounded-full object-cover border-2 border-[#2e2e2e] bg-[#1c1c1c]">
+                        <label for="file-upload"
+                            class="text-xs font-bold text-[#3897f0] hover:text-white cursor-pointer transition-colors">
+                            Change Photo
+                        </label>
+                        <input id="file-upload" type="file" accept="image/*" class="hidden">
+                    </div>
+
+                    <div class="space-y-1 text-left">
+                        <label for="bio-input"
+                            class="text-[10px] font-bold uppercase tracking-wider text-[#686868] block ml-1">Bio</label>
+                        <textarea id="bio-input" rows="2"
+                            class="w-full bg-[#0d0d0d] border border-[#2e2e2e] text-white rounded-xl p-2.5 text-xs focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none transition-all resize-none"
+                            placeholder="Tell us about yourself..."></textarea>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button id="cancel-profile-btn"
+                            class="w-full bg-red-400/80 text-black font-bold py-2 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all text-xs cursor-pointer">
+                            Cancel
+                        </button>
+                        <button id="save-profile-btn" type="button"
+                            class="w-full bg-blue-400 text-black font-bold py-2 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all text-xs cursor-pointer">
+                            Done
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </header>
+
+
+    <div class="divider"></div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <div class="tab active">
+            <i data-lucide="grid-3x3" style="width:16px;height:16px;"></i>
+        </div>
+        <div class="tab">
+            <i data-lucide="bookmark" style="width:16px;height:16px;"></i>
+        </div>
+        <div class="tab">
+            <i data-lucide="tag" style="width:16px;height:16px;"></i>
+        </div>
+    </div>
+
+    <!-- Post Grid -->
+    <div class="post-grid fade-in" id="post-area"></div>
+
+    <!-- Empty state (shown when no posts) -->
+    <div class="empty-posts" id="empty-posts">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <circle cx="9" cy="9" r="2" />
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+        </svg>
+        <p>No posts yet</p>
+    </div>
+
+
+    <div id="follow-modal"
+        class="fixed inset-0 z-[1000] hidden bg-black/80 backdrop-blur-sm grid place-items-center p-4">
+        <div class="bg-[#161616] border border-[#2e2e2e] rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div class="flex items-center justify-between p-3 border-b border-[#2e2e2e]">
+                <h3 class="text-base font-semibold text-white" id="follow-modal-title">Users</h3>
+                <button onclick="document.getElementById('follow-modal').classList.add('hidden')"
+                    class="p-1.5 rounded-full hover:bg-[#222222] text-[#686868] hover:text-white transition-colors cursor-pointer">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div id="follow-modal-content" class="max-h-[400px] overflow-y-auto p-2">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+            });
+        });
+
+        // Update post count dynamically
+        const postArea = document.getElementById('post-area');
+        const emptyPosts = document.getElementById('empty-posts');
+
+        function updatePostCount() {
+            const count = postArea.children.length;
+            document.getElementById('posts-count').textContent = count;
+            emptyPosts.style.display = count === 0 ? 'flex' : 'none';
+        }
+        updatePostCount();
+    </script>
+
+
+    <script src="../applogic/Account.js"></script>
+</body>
+
+</html>

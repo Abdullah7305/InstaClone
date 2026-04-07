@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="http://localhost:8000/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=DM+Sans:wght@300;400;500;600&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --bg: #0d0d0d;
+            --surface: #161616;
+            --card: #1c1c1c;
+            --hover: #222222;
+            --border: #2e2e2e;
+            --accent: #e1306c;
+            --accent2: #f77737;
+            --txt: #f0f0f0;
+            --muted: #686868;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--txt);
+            min-height: 100vh;
+        }
+
+        /* grain */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+            opacity: .4;
+        }
+
+        .logo {
+            font-family: 'Pacifico', cursive;
+            background: linear-gradient(90deg, #f09433, #e6683c, #dc2743, #cc2366);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* navbar */
+        nav {
+            height: 56px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-inner {
+            max-width: 640px;
+            width: 100%;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            padding: 6px;
+            border-radius: 8px;
+            transition: color .15s, background .15s;
+        }
+
+        .nav-icon-btn:hover {
+            color: var(--txt);
+            background: var(--hover);
+        }
+
+        /* IG ring */
+        .ig-ring {
+            padding: 2.5px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+            display: inline-flex;
+        }
+
+        .ig-ring-inner {
+            background: var(--surface);
+            padding: 2px;
+            border-radius: 50%;
+        }
+
+        /* profile header */
+        .profile-header {
+            max-width: 640px;
+            margin: 28px auto 0;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            animation: riseUp .4s ease both;
+        }
+
+        @keyframes riseUp {
+            from {
+                opacity: 0;
+                transform: translateY(14px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .bio {
+            font-size: .82rem;
+            color: var(--muted);
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+
+        .profile-header img {
+            width: 86px;
+            height: 86px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .profile-info {
+            flex: 1;
+        }
+
+        .profile-username {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+
+        /* follow btn */
+        .follow-btn {
+            padding: 9px 24px;
+            border-radius: 8px;
+            font-size: .85rem;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            border: none;
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff;
+            transition: opacity .2s, transform .15s;
+        }
+
+        .follow-btn:hover {
+            opacity: .87;
+            transform: translateY(-1px);
+        }
+
+        .follow-btn.following {
+            background: var(--card);
+            color: var(--muted);
+            border: 1px solid var(--border);
+        }
+
+        .follow-btn.following:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* divider */
+        .section-divider {
+            max-width: 640px;
+            margin: 24px auto 0;
+            border-top: 1px solid var(--border);
+        }
+
+        /* private section */
+        .private-section {
+            max-width: 640px;
+            margin: 32px auto 0;
+            padding: 0 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            text-align: center;
+            animation: riseUp .5s ease .1s both;
+        }
+
+        .lock-circle {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            border: 1.5px solid var(--border);
+            background: var(--card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .private-title {
+            font-size: .95rem;
+            font-weight: 700;
+        }
+
+        .private-sub {
+            font-size: .8rem;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        /* blurred grid */
+        .blurred-grid {
+            max-width: 640px;
+            margin: 24px auto 40px;
+            padding: 0 16px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 3px;
+            opacity: .18;
+            filter: blur(6px);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .blur-cell {
+            aspect-ratio: 1/1;
+            background: var(--card);
+            border: 1px solid var(--border);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0
+            }
+
+            to {
+                opacity: 1
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav>
+        <div class="nav-inner">
+            <a href="home.html" style="text-decoration:none;">
+                <span class="logo" style="font-size:1.3rem;">Instaclone</span>
+            </a>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <a href="home.html"
+                    style="text-decoration:none; font-size:.8rem; font-weight:600; color:var(--muted); transition:color .2s;"
+                    onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">Home</a>
+                <button class="nav-icon-btn">
+                    <i data-lucide="heart" style="width:20px;height:20px;"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Profile Header -->
+    <header class="profile-header">
+
+        <!-- Avatar -->
+        <div class="ig-ring">
+            <div class="ig-ring-inner">
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTCF88SudZwAw_SCSvtsW_ReFZljFrACF38qQ&s"
+                    alt="Profile" id="user-img" />
+            </div>
+        </div>
+
+        <!-- Info -->
+        <div class="profile-info">
+            <div class="profile-username" id="username-profile"></div>
+            <button id="mainFollowBtn" class="follow-btn"></button>
+            <div>
+                <p class="bio text-white mt-4" id="userBio"></p>
+            </div>
+        </div>
+
+    </header>
+
+    <div class="section-divider"></div>
+
+    <!-- Private notice -->
+    <div class="private-section" id="post-area">
+        <div class="lock-circle">
+            <i data-lucide="lock" style="width:20px;height:20px;"></i>
+        </div>
+        <p class="private-title">This Account is Private</p>
+        <p class="private-sub">Follow this account to see their photos and videos.</p>
+    </div>
+
+    <!-- Blurred preview grid -->
+    <div class="blurred-grid">
+        <div class="blur-cell"></div>
+        <div class="blur-cell"></div>
+        <div class="blur-cell"></div>
+        <div class="blur-cell"></div>
+        <div class="blur-cell"></div>
+        <div class="blur-cell"></div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+
+    </script>
+    <script src="../applogic/UserProfile.js"></script>
+</body>
+
+</html>
