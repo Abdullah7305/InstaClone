@@ -4,8 +4,7 @@ const protect = require('../Middlewares/jwt.middleware')
 const upload = require('../Services/multer.services');
 const { postsByUserId, createPost, editPost, deletePost } = require('../Controllers/Post.controller');
 const { createComment } = require('../Controllers/Comments.controller')
-// const { savePostLike } = require('../Controllers/Like.controllers');
-const { savePostLike, sendPostLikes } = require("../Controllers/Like.controllers")
+const { savePostLike, sendPostLikes } = require("../Controllers/Like.controller")
 Router
     .route('/user/comment/:userId')
     .post(createComment)

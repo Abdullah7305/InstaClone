@@ -5,7 +5,7 @@ const upload = require('../Services/multer.services');
 const { getSuggestions } = require('../Controllers/Suggestions.controller');
 const { editUserProfilePic, sendUserProfile } = require('../Controllers/Profile.controller');
 const { postsByUserId } = require('../Controllers/Post.controller');
-const { changeAccountStatus } = require('../Controllers/Settings.controller')
+const { changeAccountStatus } = require('../Controllers/Settings.controller');
 
 
 Router

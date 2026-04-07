@@ -57,6 +57,60 @@ async function postComment(postId, commentText) {
     }
 }
 
+// ---------LIKE FUNCTIONALITY (copied/adapted from Account.js) ----------
+async function likePostEvent(e, likeCountText) {
+    const btn = (e && e.currentTarget) || (e && e.target && e.target.closest && e.target.closest('button'));
+    if (!btn) {
+        console.log('likePostEvent: button not found on event', e);
+        return;
+    }
+    const postId = btn.id;
+    const userId = getUserFromLocalStorage()._id;
+    try {
+        const response = await fetch('http://localhost:8000/post/likes', {
+            method: 'POST',
+            headers: {
+                "authorization": `Bearer ${localStorage.getItem('token')}`,
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({ postId: postId, userId: userId })
+        })
+        const result = await response.json();
+        console.log("Like Event Happen", result);
+
+        // Toggle UI class and update count optimistically
+        btn.classList.toggle('text-pink-500');
+        // Update svg fill to follow the class
+        const svgEl = btn.querySelector && btn.querySelector('svg');
+        if (svgEl) svgEl.setAttribute('fill', btn.classList.contains('text-pink-500') ? 'currentColor' : 'none');
+
+        let count = parseInt(likeCountText.innerText) || 0;
+        if (btn.classList.contains('text-pink-500')) count++;
+        else count = Math.max(0, count - 1);
+        likeCountText.innerText = count;
+
+    } catch (error) {
+        console.log("Error while liking the post is ", error)
+    }
+}
+
+async function loadLikesForUser() {
+    try {
+        const user = getUserFromLocalStorage();
+        const response = await fetch(`http://localhost:8000/post/likes?userid=${user._id}`, {
+            method: 'GET',
+            headers: {
+                "authorization": `Bearer ${localStorage.getItem('token')}`,
+                "content-type": "application/json"
+            }
+        });
+        const result = await response.json();
+        console.log("Likes loading result is ", result);
+    } catch (error) {
+        console.log("Error in loading likes is ", error.message)
+    }
+}
+
 // --- Main Application Logic ---
 
 async function profileUser() {
@@ -308,6 +362,34 @@ function createPostCard(postData, username, pfp) {
 
     card.append(header, imgWrap, footer, commentContainer);
 
+    // wire like button behavior and initial like state without changing card layout
+    try {
+        const likeBtn = footer.querySelector('button');
+        const likeCountText = footer.querySelector('span');
+        if (likeBtn && likeCountText) {
+            likeBtn.id = postData._id;
+
+            // Initialize like count from likes array if available
+            if (Array.isArray(postData.likes)) {
+                likeCountText.innerText = postData.likes.length;
+            } else {
+                likeCountText.innerText = postData.likesCount || 0;
+            }
+
+            const currentUserId = getUserFromLocalStorage() && getUserFromLocalStorage()._id;
+            const hasLiked = Array.isArray(postData.likes) ? postData.likes.includes(currentUserId) : false;
+            if (hasLiked) likeBtn.classList.add('text-pink-500');
+
+            // Set SVG fill to reflect like state
+            const svg = likeBtn.querySelector('svg');
+            if (svg) svg.setAttribute('fill', hasLiked ? 'currentColor' : 'none');
+
+            likeBtn.addEventListener('click', (e) => likePostEvent(e, likeCountText));
+        }
+    } catch (err) {
+        console.log('Error wiring like button', err);
+    }
+
     return { card };
 }
 
@@ -317,4 +399,5 @@ followBtn.addEventListener('click', async () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     await profileUser();
+    await loadLikesForUser();
 });
