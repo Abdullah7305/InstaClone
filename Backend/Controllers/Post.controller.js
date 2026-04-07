@@ -1,5 +1,6 @@
 const Post = require('../Models/Post.model');
 const Comments = require('../Models/Comment.model')
+const Likes = require('../Models/Like.model');
 const { createFilePath, createPost, updatePost, deletePostFunc } = require('../Services/post.services')
 
 
@@ -36,6 +37,8 @@ exports.postsByUserId = async (req, res) => {
         //POST + COMMENTS TO SEND
         const posts = await Post.find({ userId: userId });
         const postIds = posts.map(post => post._id);
+        const likes = await Likes.find({ postId: { $in: postIds } }, { _id: 0 });
+        console.log("All together likes", likes);
         const commentGroups = await Comments.aggregate([
             { $match: { postId: { $in: postIds } } },
             {
@@ -61,9 +64,14 @@ exports.postsByUserId = async (req, res) => {
 
 
         let commentMap = {};
+        let likeMap = {};
         for (let group of commentGroups) {
             commentMap[group._id.toString()] = group.comments;
 
+        }
+        for (let like of likes) {
+
+            likeMap[like.postId.toString()] = like.likesCounts;
         }
 
         const postsWithComments = posts.map(post => {
@@ -71,7 +79,8 @@ exports.postsByUserId = async (req, res) => {
 
             return {
                 ...post.toObject(),
-                comments: commentMap[postId] || []
+                comments: commentMap[postId] || [],
+                likes: likeMap[postId] || []
             };
         });
 

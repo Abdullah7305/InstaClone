@@ -8,6 +8,8 @@ const profileRoute = require('./Routes/profile.routes.js')
 const postRoutes = require('./Routes/post.routes.js');
 const followRoutes = require('./Routes/follow.routes.js');
 const notificationRoutes = require('./Routes/notification.routes.js');
+const morgan = require('morgan');
+
 
 mongoose.connect('mongodb://localhost:27017/InstagramClone')
     .then(() => {
@@ -18,6 +20,7 @@ mongoose.connect('mongodb://localhost:27017/InstagramClone')
     })
 
 const app = express();
+app.use(morgan("dev"))
 app.use(express.json());
 app.use(
     '/uploads',
@@ -30,6 +33,8 @@ app.use('/post', postRoutes);
 app.use('/request', followRoutes);
 app.use('/notification', notificationRoutes)
 
-
+app.use((err, req, res, next) => {
+    console.log(err);
+})
 
 module.exports = app;

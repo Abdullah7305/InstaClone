@@ -186,9 +186,45 @@ function renderEditForm(card, postData) {
 
 // ---------LIKE FUNCTION ----------------  
 
-function likePostEvent(e) {
-    e.currentTarget;
-    console.log("Post Like => ", e.currentTarget.id)
+async function likePostEvent(e) {
+    const postId = e.currentTarget.id;
+    const userId = getUserFromLocalStorage()._id;
+    console.log("User  ddata", userId, postId)
+    try {
+        const response = await fetch('http://localhost:8000/post/likes', {
+            method: 'POST',
+            headers: {
+                "authorization": `Bearer ${localStorage.getItem('token')}`,
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({ postId: postId, userId: userId })
+        })
+        const result = await response.json();
+        console.log("Like Event Happen", result);
+
+        // console.log("Post Like => ", e.currentTarget.id)
+    } catch (error) {
+        console.log("Error while liking the post is ", error)
+    }
+
+}
+
+async function loadLikes() {
+    try {
+        const user = getUserFromLocalStorage();
+        const response = await fetch(`http://localhost:8000/post/likes?userid=${user._id}`, {
+            method: 'GET',
+            headers: {
+                "authorization": `Bearer ${localStorage.getItem('token')}`,
+                "content-type": "application/json"
+            }
+        });
+        const result = await response.json();
+        console.log("Likes loading result is ", result);
+    } catch (error) {
+
+        console.log("Error in loading likes is ", error.message)
+    }
 }
 
 // -------------THIS HELP TO LOAD THE FOLLOW AND FOLLOWING DATA---------------
@@ -392,21 +428,36 @@ function createPostCard(postData) {
     image.className = 'w-full h-full object-cover';
     image.onerror = () => image.src = fallbackImage;
     imgWrap.appendChild(image);
-
     // Footer & Comments
     const footer = document.createElement('div');
     footer.className = 'p-5 flex flex-col gap-4';
 
     const likeSection = document.createElement('div');
     likeSection.className = 'flex items-center gap-2 w-fit';
+
+    // Check if the current user has liked this post
+    // postData.likes is the array of user IDs from your JSON
+    const hasLiked = postData.likes && postData.likes.includes(user._id);
+
     const likeBtn = document.createElement('button');
-    likeBtn.className = 'text-white hover:text-pink-500 transition-all cursor-pointer hover:scale-110';
+    likeBtn.id = postData._id; // Keeping your ID as requested
+    likeBtn.className = `transition-all cursor-pointer hover:scale-110 ${hasLiked ? 'text-pink-500' : 'text-white hover:text-pink-500'}`;
     likeBtn.style.cssText = 'background:transparent; border:none; padding:0;';
-    likeBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+
+    // Set SVG fill based on like status
+    likeBtn.innerHTML = `
+        <svg width="22" height="22" viewBox="0 0 24 24" 
+             fill="${hasLiked ? 'currentColor' : 'none'}" 
+             stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+        </svg>`;
 
     const likeCountText = document.createElement('span');
     likeCountText.className = 'text-gray-400 text-sm font-medium';
-    likeCountText.innerText = postData.likesCount || 0;
+
+    // Calculate length of the likes array from your data
+    likeCountText.innerText = postData.likes ? postData.likes.length : 0;
+
     likeSection.append(likeBtn, likeCountText);
 
     const textContent = document.createElement('div');
@@ -614,4 +665,5 @@ saveProfileBtn.addEventListener('click', async (event) => {
 document.addEventListener('DOMContentLoaded', async () => {
     await getFollowData();
     await renderAccountPosts();
+    await loadLikes();
 });
