@@ -1,16 +1,25 @@
 const mongoose = require('mongoose');
 
 const PostCommentSchema = mongoose.Schema({
+
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        index: true
+    },
     postId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Post',
-        required: true
+        required: true,
+        index: true
     },
     commentText: {
         type: String,
-        required: true
+        required: true,
+        trim: true
     },
-    commentLikeCount: [
+    commentLikes: [
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'

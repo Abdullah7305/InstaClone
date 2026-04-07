@@ -74,7 +74,7 @@ exports.editUserProfilePic = async (req, res) => {
 
 exports.sendUserProfile = async (req, res) => {
     try {
-        const userId = req.params.accountId;
+        const { userId } = req.params;
         console.log("Request Hitting...", userId)
         if (!userId || userId == undefined) {
             return res.status(400).json({ message: 'Failed:No user id found' })
@@ -102,13 +102,3 @@ exports.sendUserProfile = async (req, res) => {
 }
 
 
-exports.sendUserPosts = async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const posts = await Post.find({ userId: userId });
-
-        return res.status(200).json({ message: 'Success', posts: posts });
-    } catch (error) {
-        return res.status(500).json({ message: 'Failed ', error: error.message })
-    }
-}

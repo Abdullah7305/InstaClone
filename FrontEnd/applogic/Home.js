@@ -85,20 +85,8 @@ async function submitPostData(e) {
     }
 }
 
-async function getAccountPost() {
-    try {
-        const user = getUserFromLocalStorage();
-        const response = await fetch(`http://localhost:8000/post/${user._id}`, {
-            headers: {
-                "authorization": `Bearer ${localStorage.getItem('token')}`
-            }
-        })
-        const result = await response.json();
-        return result.posts;
-
-    } catch (error) {
-        console.log("Error in loading the account post is ", error)
-    }
+async function getHomePost() {
+    
 }
 
 function createPostCard(postData) {
@@ -113,7 +101,7 @@ function createPostCard(postData) {
     // Header & Media (Simplified)
     const header = document.createElement('div');
     header.className = 'flex items-center gap-3 p-3 border-b border-[#2e2e2e]';
-    header.innerHTML = `<img class="w-10 h-10 rounded-full object-cover border border-[#3e3e3e]" src="${userPfp ? `http://localhost:8000/uploads/${userPfp}` : fallbackImage}" onerror="this.src='${fallbackImage}'"><span class="font-bold text-sm text-white">${postData.username || 'User'}</span>`;
+    header.innerHTML = `<img class="w-10 h-10 rounded-full object-cover border border-[#3e3e3e]" src="${userPfp ? `http://localhost:8000/uploads/${userPfp}` : fallbackImage}" onerror="this.src='${fallbackImage}'"><a href="Account.html" class="font-bold text-sm text-white">${user.username || 'User'}</a>`;
 
     const imgWrap = document.createElement('div');
     imgWrap.className = 'w-full aspect-video bg-black overflow-hidden';
@@ -196,7 +184,7 @@ function createPostCard(postData) {
 
 async function renderAccountPosts() {
     const user = getUserFromLocalStorage();
-    const posts = await getAccountPost();
+    const posts = await getHomePost();
     const postArea = document.getElementById('post-home-area');
     const loadingBeats = document.getElementById('loading-beats');
 

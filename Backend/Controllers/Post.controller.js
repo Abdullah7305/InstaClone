@@ -1,6 +1,5 @@
 const Post = require('../Models/Post.model');
-const path = require('path');
-const fs = require('fs/promises');
+const Comments = require('../Models/Comment.model')
 const { createFilePath, createPost, updatePost, deletePostFunc } = require('../Services/post.services')
 
 
@@ -29,15 +28,27 @@ exports.createPost = async (req, res) => {
 exports.postsByUserId = async (req, res) => {
     try {
         const userId = req.params.userId;
+
         if (!userId || userId == undefined) {
             return res.status(400).json({ message: 'No user Found' });
         }
 
-        const posts = await Post.find({ userId: userId }).sort({ createdAt: -1 });
+        //POST + COMMENTS TO SEND
+        const posts = await Post.find({ userId: userId });
+        const postIds = posts.map(post => post._id);
+        const commentGroups = await Comments.aggregate([{ $match: { postId: { $in: postIds } } }, { $group: { _id: '$postId', comment: { $push: '$$ROOT' } } }]);
+        console.log("Posts  are ==>>", posts);
+        console.log("Posts Ids are ==>>", postIds);
+        // console.log("Comments are ==>>", JSON.stringify(commentGroups));
+        let commentLookup = {};
 
-        if (posts.length > 0) {
-            return res.status(200).json({ message: 'Successfully send Posts', posts: posts })
-        }
+        commentGroups.forEach(group => {
+            commentLookup[getAccountPost._id.toString()] = group.comment;
+            console.log("========>>",group)
+        })
+        
+
+
         return res.status(200).json({ message: 'No User Post Avaliable' })
     } catch (error) {
         return res.status(500).json({ message: `Failed while sending post to user`, error: error })

@@ -1,5 +1,6 @@
 const followBtn = document.getElementById('mainFollowBtn');
 const postArea = document.getElementById('post-area');
+const postsComments = [];
 
 let accountId = '';
 
@@ -32,11 +33,27 @@ function populateAccountData(result) {
 
 // --------------Comment-------------------
 async function postComment(postId, commentText) {
-
-    console.log("PostId is ", postId)
-    console.log("Comment Text is ", commentText)
-    const response=await fetch('http://localhost:8000/')
+    try {
+        const user = getUserFromLocalStorage();
+        console.log("User id is ", user._id)
+        console.log("PostId is ", postId)
+        console.log("Comment Text is ", commentText)
+        const response = await fetch(`http://localhost:8000/post/user/comment/${user._id}`, {
+            method: 'POST',
+            headers: {
+                "authorization": `Bearer ${localStorage.getItem('token')}`,
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({ postId: postId, commentText: commentText })
+        });
+        const result = await response.json();
+        console.log("Result for comment posting is ", result);
+    } catch (error) {
+        console.log("Comment Posting Error is ", error.message);
+    }
 }
+
+
 
 
 // --- Main Application Logic ---
@@ -69,6 +86,7 @@ async function profileUser() {
         // Logic to show posts: Pass username and img as extra parameters
         if (result.accountStatus === 'public' || result.requestStatus === 'Accepted') {
             await renderProfilePost(accountId, result.username, result.img);
+           
         } else {
             postArea.innerHTML = `<p class="text-center py-20 text-gray-500">This Account is Private</p>`;
         }
@@ -244,7 +262,11 @@ function createPostCard(postData, username, pfp) {
         const val = commentInput.value.trim();
         if (val) {
             postComment(postData._id, val);
+
             commentInput.value = ''; // clear input after sending
+        }
+        else {
+            console.log("Not Comment text there")
         }
     });
 
@@ -262,4 +284,5 @@ followBtn.addEventListener('click', async () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     await profileUser();
+
 });

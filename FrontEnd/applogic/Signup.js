@@ -75,9 +75,9 @@ async function signupUser(event) {
         body: JSON.stringify(data),
     });
     const result = await response.json();
-    
+
     if (response.ok) {
-        localStorage.setItem("token", result.token);
+        localStorage.setItem("token", JSON.stringify(result.token));
         localStorage.setItem("user", JSON.stringify(result.user));
         document.location.href = "Login.html";
     }
