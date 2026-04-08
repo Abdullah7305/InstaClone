@@ -292,6 +292,12 @@ function renderFollowData(data, type) {
                 ${actionText}
             </button>
         `;
+        // Ensure the action button does not trigger removal or parent handlers
+        const actionBtn = userRow.querySelector('button');
+        if (actionBtn) {
+            actionBtn.type = 'button';
+            actionBtn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); };
+        }
         listWrapper.appendChild(userRow);
     });
 
@@ -329,8 +335,12 @@ async function getFollowData() {
         console.log("=========>>", result.followNfollowing)
         if (result.followNfollowing) {
             followDataArr = result.followNfollowing;
-        }
-        else {
+            // Ensure UI shows counts even when arrays are empty
+            const followersCount = Array.isArray(result.followNfollowing.followers) ? result.followNfollowing.followers.length : 0;
+            const followingCount = Array.isArray(result.followNfollowing.following) ? result.followNfollowing.following.length : 0;
+            follow.textContent = followersCount;
+            following.textContent = followingCount;
+        } else {
             follow.textContent = '0';
             following.textContent = '0'
         }
@@ -645,17 +655,10 @@ editModal.addEventListener('click', editModelHandler);
 
 fileUpload.addEventListener('change', fileUploadHandler);
 
-followerBtn.addEventListener('click', () => {
-    if (followDataArr && followDataArr.followers) {
-        renderFollowData(followDataArr.followers, "follow")
-    }
-});
+// Disable opening the follow modal on click — show counts only
+followerBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
 
-followingBtn.addEventListener('click', () => {
-    if (followDataArr && followDataArr.following) {
-        renderFollowData(followDataArr.following, "following")
-    }
-});
+followingBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
 
 saveProfileBtn.addEventListener('click', async (event) => {
     event.preventDefault()

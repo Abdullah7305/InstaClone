@@ -8,6 +8,8 @@ const submitPostBtn = document.getElementById("submit-post-btn");
 const homeProfilePic = document.getElementById('home-profile-pic');
 const homeProfileName = document.getElementById('home-profile-name');
 
+const socket = io("http://localhost:8000");
+
 function getUserFromLocalStorage() {
     const user = JSON.parse(localStorage.getItem('user'));
     return user;
@@ -21,9 +23,55 @@ function filterImageAddress(imageUrl) {
 }
 
 // -----------LIKE POST-------------
-function likePostEvent(e) {
-    e.currentTarget;
-    console.log("Post Like => ", e.currentTarget.id)
+async function likePostEvent(e, likeCountText) {
+    const btn = (e && e.currentTarget) || (e && e.target && e.target.closest && e.target.closest('button'));
+    if (!btn) return console.log('likePostEvent: button not found');
+    const postId = btn.id;
+    const userId = getUserFromLocalStorage()._id;
+    try {
+        const response = await fetch('http://localhost:8000/post/likes', {
+            method: 'POST',
+            headers: {
+                "authorization": `Bearer ${localStorage.getItem('token')}`,
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({ postId: postId, userId: userId })
+        });
+        const result = await response.json();
+        console.log('Like Event Happen', result);
+
+        // Toggle UI and update svg fill
+        btn.classList.toggle('text-pink-500');
+        const svgEl = btn.querySelector && btn.querySelector('svg');
+        if (svgEl) svgEl.setAttribute('fill', btn.classList.contains('text-pink-500') ? 'currentColor' : 'none');
+
+        let count = parseInt(likeCountText.innerText) || 0;
+        if (btn.classList.contains('text-pink-500')) count++;
+        else count = Math.max(0, count - 1);
+        likeCountText.innerText = count;
+
+    } catch (error) {
+        console.log('Error while liking the post is ', error);
+    }
+}
+
+// -----------COMMENT POST-----------
+async function postComment(postId, commentText) {
+    try {
+        const user = getUserFromLocalStorage();
+        const response = await fetch(`http://localhost:8000/post/user/comment/${user._id}`, {
+            method: 'POST',
+            headers: {
+                "authorization": `Bearer ${localStorage.getItem('token')}`,
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({ postId: postId, commentText: commentText })
+        });
+        const result = await response.json();
+        console.log('Result for comment posting is ', result);
+    } catch (error) {
+        console.log('Comment Posting Error is ', error.message);
+    }
 }
 // --- Preview the Image ---
 function handleImagePreview(event) {
@@ -86,7 +134,20 @@ async function submitPostData(e) {
 }
 
 async function getHomePost() {
-    
+    try {
+        const user = getUserFromLocalStorage();
+        const response = await fetch(`http://localhost:8000/post/allposts?userId=${user._id}`, {
+            method: 'GET',
+            headers: {
+                "authorization": `Bearer ${localStorage.getItem('token')}`
+            }
+        })
+        const result = await response.json();
+        console.log("Result in Getting the Post is ", result);
+        return result.postsWithComments;
+    } catch (error) {
+        console.error("Error while fetching home posts:", error);
+    }
 }
 
 function createPostCard(postData) {
@@ -101,13 +162,14 @@ function createPostCard(postData) {
     // Header & Media (Simplified)
     const header = document.createElement('div');
     header.className = 'flex items-center gap-3 p-3 border-b border-[#2e2e2e]';
-    header.innerHTML = `<img class="w-10 h-10 rounded-full object-cover border border-[#3e3e3e]" src="${userPfp ? `http://localhost:8000/uploads/${userPfp}` : fallbackImage}" onerror="this.src='${fallbackImage}'"><a href="Account.html" class="font-bold text-sm text-white">${user.username || 'User'}</a>`;
+    const authorUsername = postData.username || user.username || 'User';
+    const authorPfpPath = postData.profilePicPathUrl ? filterImageAddress(postData.profilePicPathUrl) : userPfp;
+    header.innerHTML = `<img class="w-10 h-10 rounded-full object-cover border border-[#3e3e3e]" src="${authorPfpPath ? `http://localhost:8000/uploads/${authorPfpPath}` : fallbackImage}" onerror="this.src='${fallbackImage}'"><a href="Account.html" class="font-bold text-sm text-white">${authorUsername}</a>`;
 
     const imgWrap = document.createElement('div');
+    const cleanPostImg = postData.imageUrl ? filterImageAddress(postData.imageUrl) : null;
     imgWrap.className = 'w-full aspect-video bg-black overflow-hidden';
-    imgWrap.innerHTML = `<img class="w-full h-full object-cover" src="${postData.imageUrl ? `http://localhost:8000/uploads/${postData.imageUrl}` : fallbackImage}">`;
-
-    // Footer
+    imgWrap.innerHTML = `<img class="w-full h-full object-cover" src="${cleanPostImg ? `http://localhost:8000/uploads/${cleanPostImg}` : fallbackImage}">`;
     const footer = document.createElement('div');
     footer.className = 'p-4 flex flex-col gap-3';
     footer.innerHTML = `
@@ -168,9 +230,10 @@ function createPostCard(postData) {
         return div;
     };
 
-    sendBtn.onclick = () => {
+    sendBtn.onclick = async () => {
         if (!input.value.trim()) return;
         const isReply = input.value.startsWith('@');
+        await postComment(postData._id, input.value.trim());
         commentList.appendChild(createCommentElement(input.value, isReply));
         input.value = '';
         commentList.scrollTop = commentList.scrollHeight;
@@ -178,6 +241,33 @@ function createPostCard(postData) {
 
     commentSection.append(commentList, inputRow);
     card.append(header, imgWrap, footer, commentSection);
+
+    // wire like button behavior and initial like state
+    try {
+        const likeBtn = footer.querySelector('button');
+        const likeCountText = footer.querySelector('span');
+        if (likeBtn && likeCountText) {
+            likeBtn.id = postData._id;
+
+            if (Array.isArray(postData.likes)) {
+                likeCountText.innerText = postData.likes.length;
+            } else {
+                likeCountText.innerText = postData.likesCount || 0;
+            }
+
+            const currentUserId = getUserFromLocalStorage() && getUserFromLocalStorage()._id;
+            const hasLiked = Array.isArray(postData.likes) ? postData.likes.includes(currentUserId) : false;
+            if (hasLiked) {
+                likeBtn.classList.add('text-pink-500');
+                const svg = likeBtn.querySelector('svg');
+                if (svg) svg.setAttribute('fill', 'currentColor');
+            }
+
+            likeBtn.addEventListener('click', (e) => likePostEvent(e, likeCountText));
+        }
+    } catch (err) {
+        console.log('Error wiring like button', err);
+    }
 
     return { card };
 }
@@ -209,8 +299,91 @@ async function renderAccountPosts() {
         postArea.appendChild(loadingBeats)
     }
 
-    console.log("Result For post is ", posts);
+
 }
+
+socket.on("connect", () => {
+    console.log("Connected to server: ", socket.id);
+    socket.emit("register", getUserFromLocalStorage()._id);
+});
+
+// Small toast for accepted follow requests
+function showAcceptUI(data) {
+    const username = (data && data.sender && data.sender.username) || 'Someone';
+    const msg = `${username} accepted your follow request`;
+
+    const toast = document.createElement('div');
+    Object.assign(toast.style, {
+        position: 'fixed',
+        right: '16px',
+        top: '16px',
+        background: 'rgba(17,17,17,0.95)',
+        color: '#fff',
+        padding: '10px 14px',
+        borderRadius: '8px',
+        boxShadow: '0 6px 18px rgba(0,0,0,0.4)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        maxWidth: '320px',
+        fontSize: '14px'
+    });
+
+    const text = document.createElement('span');
+    text.textContent = msg;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '&times;';
+    Object.assign(closeBtn.style, {
+        background: 'transparent',
+        border: 'none',
+        color: '#fff',
+        fontSize: '18px',
+        cursor: 'pointer',
+        lineHeight: '1'
+    });
+    closeBtn.addEventListener('click', () => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+    });
+
+    toast.appendChild(text);
+    toast.appendChild(closeBtn);
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 5000);
+}
+
+socket.on('follow-request', (data) => {
+    console.log("SOcket incoming data is ", data);
+    const dot = document.getElementById('nav-notif-dot');
+    if (dot) dot.classList.remove('hidden');
+})
+
+socket.on("accept-request", (data) => {
+    console.log("Follow Request Accepted ", data);
+    const dot = document.getElementById('nav-notif-dot');
+    if (dot) dot.classList.remove('hidden');
+    // show a small UI toast to inform the user
+    try {
+        showAcceptUI(data);
+    }
+    catch (e) {
+        console.log('showAcceptUI error', e);
+    }
+    // Refresh notification state so the notification box shows updated items
+    try {
+        if (typeof notify === 'function') notify();
+        const notifBox = document.getElementById('notification-box');
+        if (notifBox && !notifBox.classList.contains('hidden')) {
+            if (typeof getDetailedNotification === 'function') getDetailedNotification();
+        }
+    } catch (err) {
+        console.log('Error refreshing notifications on accept-request', err);
+    }
+})
 
 
 

@@ -1,5 +1,6 @@
 const followBtn = document.getElementById('mainFollowBtn');
 const postArea = document.getElementById('post-area');
+const socket = io("http://localhost:8000");
 const postsComments = [];
 
 let accountId = '';
@@ -392,6 +393,12 @@ function createPostCard(postData, username, pfp) {
 
     return { card };
 }
+
+socket.on('connect', () => {
+    console.log("User Connected ", socket.id);
+    socket.emit("register", getUserFromLocalStorage()._id);
+})
+
 
 followBtn.addEventListener('click', async () => {
     await followRequest();

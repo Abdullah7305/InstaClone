@@ -1,6 +1,8 @@
 const UserFollow = require('../Models/Follow.model');
 const FollowRequest = require('../Models/FollowRequest.model')
 const Notification = require('../Models/Notification.model');
+const socketManager = require('../socket');
+const onlineUsers = require('../onlineUsers');
 
 exports.sendFollowData = async (req, res) => {
     try {
@@ -21,6 +23,7 @@ exports.followRequest = async (req, res) => {
         //use the follow collection change the status to requested
         const follower = req.body.userId;
         const following = req.params.userId;
+        let requestSent = false;
         //If follow request Exist
         const isRequested = await FollowRequest.exists(
             {
@@ -64,7 +67,8 @@ exports.followRequest = async (req, res) => {
                     notifyType: 'Follow_Request'
                 })
             ])
-            return res.status(200).json({ message: 'Requested' });
+            requestSent = true;
+
         }
         else {//first time when the user will send the request 
             await Promise.all([
@@ -79,10 +83,21 @@ exports.followRequest = async (req, res) => {
                     notifyType: 'Follow_Request'
                 })
             ]);
+            requestSent = true;
 
+        }
+        if (requestSent === true) {
+            const targetSocketId = onlineUsers[following];
+            const io = socketManager.getIO();
+            const senderName = await Notification.findOne({ receiver: following }, { _id: 0, receiver: 0 }).populate('sender', 'username');
+            console.log("Sender name is ", senderName.sender.username);
+            console.log("Target Id is ", targetSocketId);
+            io.to(targetSocketId).emit('follow-request', {
+                senderName: senderName.sender.username,
+                notifyType: 'Follow_Request'
+            })
             return res.status(200).json({ message: 'Requested ' });
         }
-
 
 
     } catch (error) {
@@ -98,33 +113,45 @@ exports.acceptRequest = async (req, res) => {
         if (!sender || !receiver) {
             return res.status(200).json({ message: 'No Data Sent Properly' })
         }
-        Promise.all([
-            await FollowRequest.findOneAndUpdate(
-                {
-                    follower: sender,
-                    following: receiver,
-
-                },
-                {
-                    $set: {
-                        requestStatus: 'Accepted'
-                    }
-                }
+        // Update request status and remove notification, and update both users' follow docs
+        await Promise.all([
+            FollowRequest.findOneAndUpdate(
+                { follower: sender, following: receiver },
+                { $set: { requestStatus: 'Accepted' } }
             ),
-            await Notification.deleteOne({
-                sender: sender,
-                receiver: receiver,
-                notifyType: 'Follow_Request'
-            })
-        ])
-        const addFollowing = await Follow.findOneAndUpdate(
+            Notification.deleteOne({ sender: sender, receiver: receiver, notifyType: 'Follow_Request' })
+        ]);
+
+        // Add receiver to sender's `following` list (create doc if missing)
+        const addFollowing = UserFollow.findOneAndUpdate(
             { userId: sender },
-            {
-                $addToSet: { following: receiver }
-            },
+            { $addToSet: { following: receiver } },
             { upsert: true, new: true }
-        )
-        return res.status(201).json({ message: 'Request Accepted' })
+        );
+
+        // Add sender to receiver's `followers` list (create doc if missing)
+        const addFollower = UserFollow.findOneAndUpdate(
+            { userId: receiver },
+            { $addToSet: { followers: sender } },
+            { upsert: true, new: true }
+        );
+
+        await Promise.all([addFollowing, addFollower]);
+
+
+        const senderSocketId = onlineUsers[sender];
+        console.log("Sender id is ", senderSocketId);
+        if (senderSocketId) {
+            const receiverName = await Notification({ receiver: receiver }, { sender: 0, _id: 0 }).populate('receiver', 'username')
+            console.log("Receiver name is ", receiverName.receiver.username);
+            const io = socketManager.getIO();
+            io.to(senderSocketId).emit('accept-request', {
+                receiverName: receiverName.receiver.username
+
+            })
+        }
+
+        return res.status(201).json({ message: 'Request Accepted' });
     } catch (error) {
         console.log("Error in accepting request ", error)
         return res.status(500).json({ message: 'Failed ', error: error.message })

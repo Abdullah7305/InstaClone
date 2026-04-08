@@ -2,7 +2,7 @@ const express = require('express');
 const Router = express.Router();
 const protect = require('../Middlewares/jwt.middleware')
 const upload = require('../Services/multer.services');
-const { postsByUserId, createPost, editPost, deletePost } = require('../Controllers/Post.controller');
+const { postsByUserId, sendAllPosts, createPost, editPost, deletePost } = require('../Controllers/Post.controller');
 const { createComment } = require('../Controllers/Comments.controller')
 const { savePostLike, sendPostLikes } = require("../Controllers/Like.controller")
 Router
@@ -14,6 +14,10 @@ Router
     .route('/likes')
     .post(savePostLike)
     .get(sendPostLikes)
+
+Router
+    .route('/allposts')
+    .get(sendAllPosts)
 
 Router
     .route('/:userId')
