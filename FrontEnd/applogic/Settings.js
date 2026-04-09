@@ -27,7 +27,7 @@ function loadSettings() {
 async function changeAccountStatus(status) {
     try {
         const user = getUserFromLocalStorage();
-        // Note: Removed the colon ':' from the URL variable if your backend doesn't expect it in the string
+      
         const response = await fetch(`http://localhost:8000/user/accountStatus/${user._id}`, {
             method: 'PATCH',
             headers: {

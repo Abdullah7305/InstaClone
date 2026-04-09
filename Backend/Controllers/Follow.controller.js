@@ -1,8 +1,10 @@
 const UserFollow = require('../Models/Follow.model');
+const User = require('../Models/User.model');
 const FollowRequest = require('../Models/FollowRequest.model')
 const Notification = require('../Models/Notification.model');
 const socketManager = require('../socket');
 const onlineUsers = require('../onlineUsers');
+const mongoose = require('mongoose');
 
 exports.sendFollowData = async (req, res) => {
     try {
@@ -23,6 +25,9 @@ exports.followRequest = async (req, res) => {
         //use the follow collection change the status to requested
         const follower = req.body.userId;
         const following = req.params.userId;
+
+        const followingProfilePublic = await User.findOne({ _id: new mongoose.Types.ObjectId(following) }, { _id: 0, accountStatus: 1 })
+        console.log("======>>>", followingProfilePublic);
         let requestSent = false;
         //If follow request Exist
         const isRequested = await FollowRequest.exists(
@@ -44,7 +49,11 @@ exports.followRequest = async (req, res) => {
             }
         );
         if (isRequested || isAccepted) {//if user already reuqested and want to cancel the reuest ot to cancelt the following then
+            let userFollowing = await UserFollow.findOne({ userId: follower });
+            userFollowing.following = userFollowing.following.filter(id => id != following)
+            await userFollowing.save()
             await Promise.all([
+
                 FollowRequest.findOneAndUpdate(
                     { follower: follower, following: following },
                     { $set: { requestStatus: 'Rejected' } }
@@ -55,19 +64,32 @@ exports.followRequest = async (req, res) => {
             ])
             return res.status(201).json({ message: `Rejected` })
         }
-        else if (isRejected) {//if use want to sned the request again then
-            await Promise.all([
-                FollowRequest.findOneAndUpdate(
+        else if (isRejected) {
+            //if use want to sned the request again then
+
+            if (followingProfilePublic.accountStatus == 'public') {
+                await FollowRequest.findOneAndUpdate(
                     { follower: follower, following: following },
-                    { $set: { requestStatus: 'Requested' } }
-                ),
-                Notification.create({
-                    sender: follower,
-                    receiver: following,
-                    notifyType: 'Follow_Request'
-                })
-            ])
-            requestSent = true;
+                    { $set: { requestStatus: 'Accepted' } }
+                )
+
+                return res.status(200).json({ message: 'Successfully follow the user...' })
+            }
+            else {
+                await Promise.all([
+                    FollowRequest.findOneAndUpdate(
+                        { follower: follower, following: following },
+                        { $set: { requestStatus: 'Requested' } }
+                    ),
+                    Notification.create({
+                        sender: follower,
+                        receiver: following,
+                        notifyType: 'Follow_Request'
+                    })
+                ])
+                requestSent = true;
+            }
+
 
         }
         else {//first time when the user will send the request 
@@ -119,7 +141,8 @@ exports.acceptRequest = async (req, res) => {
                 { follower: sender, following: receiver },
                 { $set: { requestStatus: 'Accepted' } }
             ),
-            Notification.deleteOne({ sender: sender, receiver: receiver, notifyType: 'Follow_Request' })
+            Notification.deleteOne({ sender: sender, receiver: receiver, notifyType: 'Follow_Request' }),
+            Notification.create({ sender: receiver, receiver: sender, notifyType: 'Accept_Request' })
         ]);
 
         // Add receiver to sender's `following` list (create doc if missing)

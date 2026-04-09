@@ -164,7 +164,13 @@ function createPostCard(postData) {
     header.className = 'flex items-center gap-3 p-3 border-b border-[#2e2e2e]';
     const authorUsername = postData.username || user.username || 'User';
     const authorPfpPath = postData.profilePicPathUrl ? filterImageAddress(postData.profilePicPathUrl) : userPfp;
-    header.innerHTML = `<img class="w-10 h-10 rounded-full object-cover border border-[#3e3e3e]" src="${authorPfpPath ? `http://localhost:8000/uploads/${authorPfpPath}` : fallbackImage}" onerror="this.src='${fallbackImage}'"><a href="Account.html" class="font-bold text-sm text-white">${authorUsername}</a>`;
+    if (postData.userId != user._id) {
+
+        header.innerHTML = `<img class="w-10 h-10 rounded-full object-cover border border-[#3e3e3e]" src="${authorPfpPath ? `http://localhost:8000/uploads/${authorPfpPath}` : fallbackImage}" onerror="this.src='${fallbackImage}'"><a href="UserProfile.html?accountId=${postData.userId}" class="font-bold text-sm text-white">${authorUsername}</a>`;
+    }
+    else {
+        header.innerHTML = `<img class="w-10 h-10 rounded-full object-cover border border-[#3e3e3e]" src="${authorPfpPath ? `http://localhost:8000/uploads/${authorPfpPath}` : fallbackImage}" onerror="this.src='${fallbackImage}'"><span  class="font-bold text-sm text-white">${authorUsername}</span>`;
+    }
 
     const imgWrap = document.createElement('div');
     const cleanPostImg = postData.imageUrl ? filterImageAddress(postData.imageUrl) : null;
@@ -280,7 +286,13 @@ async function renderAccountPosts() {
 
     let profilePicPathUrl = filterImageAddress(user.profilePicPathUrl);
     homeProfileName.textContent = user.username;
-    homeProfilePic.src = `http://localhost:8000/uploads/${profilePicPathUrl}`
+    if (!profilePicPathUrl) {
+        homeProfilePic.src = "https://i.pinimg.com/474x/1d/ec/e2/1dece2c8357bdd7cee3b15036344faf5.jpg"
+    }
+    else {
+
+        homeProfilePic.src = `http://localhost:8000/uploads/${profilePicPathUrl}`
+    }
     postArea.innerHTML = '';
 
     if (posts) {
@@ -307,87 +319,29 @@ socket.on("connect", () => {
     socket.emit("register", getUserFromLocalStorage()._id);
 });
 
-// Small toast for accepted follow requests
-function showAcceptUI(data) {
-    const username = (data && data.sender && data.sender.username) || 'Someone';
-    const msg = `${username} accepted your follow request`;
 
-    const toast = document.createElement('div');
-    Object.assign(toast.style, {
-        position: 'fixed',
-        right: '16px',
-        top: '16px',
-        background: 'rgba(17,17,17,0.95)',
-        color: '#fff',
-        padding: '10px 14px',
-        borderRadius: '8px',
-        boxShadow: '0 6px 18px rgba(0,0,0,0.4)',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        maxWidth: '320px',
-        fontSize: '14px'
-    });
-
-    const text = document.createElement('span');
-    text.textContent = msg;
-
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '&times;';
-    Object.assign(closeBtn.style, {
-        background: 'transparent',
-        border: 'none',
-        color: '#fff',
-        fontSize: '18px',
-        cursor: 'pointer',
-        lineHeight: '1'
-    });
-    closeBtn.addEventListener('click', () => {
-        if (toast.parentNode) toast.parentNode.removeChild(toast);
-    });
-
-    toast.appendChild(text);
-    toast.appendChild(closeBtn);
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-        if (toast.parentNode) toast.parentNode.removeChild(toast);
-    }, 5000);
-}
 
 socket.on('follow-request', (data) => {
-    console.log("SOcket incoming data is ", data);
+    console.log("Socket incoming data is ", data);
     const dot = document.getElementById('nav-notif-dot');
     if (dot) dot.classList.remove('hidden');
 })
 
 socket.on("accept-request", (data) => {
-    console.log("Follow Request Accepted ", data);
+    console.log("Socket incoming data is ", data);
     const dot = document.getElementById('nav-notif-dot');
     if (dot) dot.classList.remove('hidden');
-    // show a small UI toast to inform the user
-    try {
-        showAcceptUI(data);
-    }
-    catch (e) {
-        console.log('showAcceptUI error', e);
-    }
-    // Refresh notification state so the notification box shows updated items
-    try {
-        if (typeof notify === 'function') notify();
-        const notifBox = document.getElementById('notification-box');
-        if (notifBox && !notifBox.classList.contains('hidden')) {
-            if (typeof getDetailedNotification === 'function') getDetailedNotification();
-        }
-    } catch (err) {
-        console.log('Error refreshing notifications on accept-request', err);
-    }
+})
+
+socket.on('post-upload', (postData) => {
+    console.log("Post through socket is ", postData)
+    
 })
 
 
 
 fileInput.addEventListener('change', handleImagePreview);
+createForm.addEventListener('submit', (e) => e.preventDefault());
 submitPostBtn.addEventListener('click', submitPostData)
 document.addEventListener('DOMContentLoaded', async () => {
     await renderAccountPosts()

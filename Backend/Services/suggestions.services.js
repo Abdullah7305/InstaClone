@@ -15,9 +15,10 @@ exports.extractSuggestions = async (userId) => {
         let suggestions = [];
         users.forEach(user => {
             if (!followSet.has(user._id)) {
-                suggestions.push(user._id);
+                suggestions.push(user);
             }
         });
+
         return suggestions;
     }
 

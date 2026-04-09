@@ -24,7 +24,7 @@ async function notify() {
             notifyOnScreen(result);
         }
         return result.message;
-        console.log("Notification Signal Result ", result)
+
     } catch (error) {
         console.log("Error while loading notification ", error.message)
     }
@@ -42,6 +42,26 @@ function toggleNotifications() {
     const box = document.getElementById('notification-box');
     box.classList.toggle('hidden');
 
+}
+
+async function handleDeleteNotification(e) {
+    try {
+        const notificationId = e.target.id;
+        console.log("notify id is ", notificationId)
+        const response = await fetch(`http://localhost:8000/notification/delete`, {
+            method: 'DELETE',
+            headers: {
+                "authorization": `Bearer ${localStorage.getItem('token')}`,
+                "content-type": "application/json"
+            },
+            body: JSON.stringify({ notificationId: notificationId })
+        })
+        const result = await response.json();
+        console.log("Result is ", result);
+
+    } catch (error) {
+        console.log("Erro in deleting in notification...", error.message)
+    }
 }
 
 
@@ -93,6 +113,27 @@ function renderFollowRequest(notification) {
     notificationArea.append(container);
 }
 
+function acceptedRequest(notification) {
+    const div = document.createElement("div");
+    div.className = "bg-neutral-900 p-3 rounded-lg mb-2 flex justify-between items-center";
+
+    const text = document.createElement("p");
+    text.className = "text-white text-sm";
+    text.innerText = `${notification.sender.username} has accepted your request`;
+
+    const btn = document.createElement("button");
+    btn.className = "text-white text-xs";
+    btn.innerText = "✕";
+    btn.id = notification._id;
+    btn.addEventListener('click', (e) => {
+        handleDeleteNotification(e, div)
+    })
+    btn.onclick = () => div.remove();
+
+    div.append(text, btn);
+    notificationArea.append(div);
+}
+
 function renderNotification(notifications) {
     console.log("Notification Result", notifications);
 
@@ -104,6 +145,10 @@ function renderNotification(notifications) {
             if (notification.notifyType == 'Follow_Request') {
 
                 renderFollowRequest(notification);
+            }
+            else if (notification.notifyType == 'Accept_Request') {
+
+                acceptedRequest(notification)
             }
         })
 
@@ -153,7 +198,7 @@ async function rejectRequest(e) {
         const result = await response.json();
         console.log("Result for request rejection is ", result);
         e.target.disabled = true;
-      
+
         toggleNotifications()
 
     } catch (error) {
@@ -179,7 +224,7 @@ async function acceptRequest(e) {
         const result = await response.json();
         console.log("Result for request rejection is ", result);
         e.target.disabled = true;
-   
+
         toggleNotifications();
 
     } catch (error) {

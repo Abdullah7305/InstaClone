@@ -3,22 +3,41 @@ const Comments = require('../Models/Comment.model')
 const Likes = require('../Models/Like.model');
 const Follow = require('../Models/Follow.model')
 const User = require('../Models/User.model')
+const socketManager = require('../socket');
+const onlineUser = require('../onlineUsers');
 const { createFilePath, createPost, updatePost, deletePostFunc } = require('../Services/post.services')
 
 
 exports.createPost = async (req, res) => {
     try {
         const userId = req.params.userId;
-        const { title, description } = req.body;
-
-        let filePath = createFilePath(req.file.path);
-
-
-        const post = await createPost({ userId, title, description, filePath })
 
         if (!userId || userId == undefined) {
             return res.status(400).json({ message: 'No user Found' });
         }
+        const { title, description } = req.body;
+
+        const followingDocs = await Follow.findOne({ userId: userId });
+        const followingIds = (followingDocs && Array.isArray(followingDocs.following)) ? followingDocs.following : [];
+
+
+        let filePath = createFilePath(req.file.path);
+
+        const post = await createPost({ userId, title, description, filePath })
+
+
+        if (followingIds) {
+            const io = socketManager.getIO();
+            followingIds.forEach(id => {
+                const targetSocketId = onlineUser[id];
+                if (targetSocketId) {
+                    io.to(targetSocketId).emit('post-upload', {
+                        post: post
+                    })
+                }
+            })
+        }
+
         return res.status(201).json({ message: 'Post Created Successfully', post: post });
 
     } catch (error) {
@@ -93,6 +112,7 @@ exports.sendAllPosts = async (req, res) => {
                 likes: likeMap[postId] || []
             };
         });
+
 
         return res.status(200).json({ message: 'Success', postsWithComments: postsWithComments })
     } catch (error) {

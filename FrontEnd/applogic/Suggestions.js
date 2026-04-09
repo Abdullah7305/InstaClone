@@ -35,12 +35,13 @@ async function getSuggestedUser() {
         });
 
         const result = await response.json();
-
+      
         if (response.ok) {
 
             suggestionBox.innerHTML = ""; // clear once before loop
             SuggestionLoad = true;
             result.suggestions.forEach(user => {
+                  console.log("Sugggestions result is ", user)
                 const element = renderSuggestions(user);
                 suggestionBox.appendChild(element);
             });
@@ -50,7 +51,7 @@ async function getSuggestedUser() {
 
 
     } catch (error) {
-        console.log("Error i getting Suggested User is ", error.message)
+        console.log("Error is getting Suggested User is ", error.message)
     }
 }
 

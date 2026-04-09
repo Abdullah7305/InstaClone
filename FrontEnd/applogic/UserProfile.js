@@ -394,6 +394,7 @@ function createPostCard(postData, username, pfp) {
     return { card };
 }
 
+
 socket.on('connect', () => {
     console.log("User Connected ", socket.id);
     socket.emit("register", getUserFromLocalStorage()._id);
