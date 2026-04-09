@@ -8,6 +8,7 @@ const profileRoute = require('./Routes/profile.routes.js')
 const postRoutes = require('./Routes/post.routes.js');
 const followRoutes = require('./Routes/follow.routes.js');
 const notificationRoutes = require('./Routes/notification.routes.js');
+const messageRoutes = require('./Routes/message.routes.js');
 const morgan = require('morgan');
 
 
@@ -19,6 +20,8 @@ mongoose.connect('mongodb://localhost:27017/InstagramClone')
         console.log("Error while connecting DB")
     })
 
+
+
 const app = express();
 app.use(morgan("dev"))
 app.use(express.json());
@@ -27,11 +30,14 @@ app.use(
     express.static(path.join(__dirname, 'Services', 'uploads'))
 );
 app.use(cors());
+
+
 app.use('/auth', authRoutes);
 app.use('/user', profileRoute);
 app.use('/post', postRoutes);
 app.use('/request', followRoutes);
-app.use('/notification', notificationRoutes)
+app.use('/notification', notificationRoutes);
+app.use('/message', messageRoutes);
 
 app.use((err, req, res, next) => {
     console.log(err);

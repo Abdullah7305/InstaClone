@@ -4,24 +4,24 @@ const mongoose = require('mongoose');
 
 exports.extractSuggestions = async (userId) => {
 
-    const users = await User.find({
-        _id: { $ne: new mongoose.Types.ObjectId(userId) }
-    }, { email: 0, bio: 0, password: 0 });
+    const userFollowDoc = await Follow.findOne({ userId: userId });
 
-    const following = await Follow.find({ userId: userId });
 
-    if (following.length > 0) {//user following exst so filter the suggestion 
-        let followSet = new Set(following.following);
-        let suggestions = [];
-        users.forEach(user => {
-            if (!followSet.has(user._id)) {
-                suggestions.push(user);
-            }
-        });
+    let excludeIds = [new mongoose.Types.ObjectId(userId)];
 
-        return suggestions;
+    if (userFollowDoc && userFollowDoc.following.length > 0) {
+        excludeIds = excludeIds.concat(userFollowDoc.following);
     }
 
-    return users;
 
+    const suggestions = await User.find({
+        _id: { $nin: excludeIds }
+    }, {
+        email: 0,
+        bio: 0,
+        password: 0
+    });
+
+    console.log(`Found ${suggestions.length} suggestions for user ${userId}`);
+    return suggestions;
 };

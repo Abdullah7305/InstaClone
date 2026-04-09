@@ -45,6 +45,7 @@ async function postComment(postId, commentText) {
                 "authorization": `Bearer ${localStorage.getItem('token')}`,
                 "content-type": "application/json"
             },
+            
             body: JSON.stringify({ postId: postId, commentText: commentText })
         });
         const result = await response.json();

@@ -341,7 +341,13 @@ socket.on('post-upload', (postData) => {
 socket.on('like-post', (username) => {
     const dot = document.getElementById('nav-notif-dot');
     if (dot) dot.classList.remove('hidden');
-    
+
+})
+
+socket.on('post-comment', (username) => {
+    console.log("Comment Socket is =======>>>", username);
+    const dot = document.getElementById('nav-notif-dot');
+    if (dot) dot.classList.remove('hidden');
 })
 
 
