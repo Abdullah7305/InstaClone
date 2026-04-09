@@ -26,8 +26,9 @@ exports.followRequest = async (req, res) => {
         const follower = req.body.userId;
         const following = req.params.userId;
 
+
         const followingProfilePublic = await User.findOne({ _id: new mongoose.Types.ObjectId(following) }, { _id: 0, accountStatus: 1 })
-        console.log("======>>>", followingProfilePublic);
+
         let requestSent = false;
         //If follow request Exist
         const isRequested = await FollowRequest.exists(
@@ -49,6 +50,7 @@ exports.followRequest = async (req, res) => {
             }
         );
         if (isRequested || isAccepted) {//if user already reuqested and want to cancel the reuest ot to cancelt the following then
+            console.log("I am true here..");
             let userFollowing = await UserFollow.findOne({ userId: follower });
             userFollowing.following = userFollowing.following.filter(id => id != following)
             await userFollowing.save()
@@ -72,7 +74,7 @@ exports.followRequest = async (req, res) => {
                     { follower: follower, following: following },
                     { $set: { requestStatus: 'Accepted' } }
                 )
-
+                
                 return res.status(200).json({ message: 'Successfully follow the user...' })
             }
             else {

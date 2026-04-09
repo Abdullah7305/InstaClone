@@ -41,7 +41,7 @@ async function getSuggestedUser() {
             suggestionBox.innerHTML = ""; // clear once before loop
             SuggestionLoad = true;
             result.suggestions.forEach(user => {
-                  console.log("Sugggestions result is ", user)
+               
                 const element = renderSuggestions(user);
                 suggestionBox.appendChild(element);
             });

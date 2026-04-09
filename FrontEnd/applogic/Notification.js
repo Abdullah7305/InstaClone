@@ -57,7 +57,7 @@ async function handleDeleteNotification(e) {
             body: JSON.stringify({ notificationId: notificationId })
         })
         const result = await response.json();
-        console.log("Result is ", result);
+
 
     } catch (error) {
         console.log("Erro in deleting in notification...", error.message)
@@ -134,6 +134,27 @@ function acceptedRequest(notification) {
     notificationArea.append(div);
 }
 
+function postLike(notification) {
+    const div = document.createElement("div");
+    div.className = "bg-neutral-900 p-3 rounded-lg mb-2 flex justify-between items-center";
+
+    const text = document.createElement("p");
+    text.className = "text-white text-sm";
+    text.innerText = `${notification.sender.username} has Like your Post`;
+
+    const btn = document.createElement("button");
+    btn.className = "text-white text-xs";
+    btn.innerText = "✕";
+    btn.id = notification._id;
+    btn.addEventListener('click', (e) => {
+        handleDeleteNotification(e, div)
+    })
+    btn.onclick = () => div.remove();
+
+    div.append(text, btn);
+    notificationArea.append(div);
+}
+
 function renderNotification(notifications) {
     console.log("Notification Result", notifications);
 
@@ -149,6 +170,9 @@ function renderNotification(notifications) {
             else if (notification.notifyType == 'Accept_Request') {
 
                 acceptedRequest(notification)
+            }
+            else if (notification.notifyType == 'Like') {
+                postLike(notification);
             }
         })
 

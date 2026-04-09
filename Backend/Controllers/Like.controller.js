@@ -1,4 +1,10 @@
 const Likes = require('../Models/Like.model');
+const Post = require('../Models/Post.model');
+const socketManager = require('../socket');
+const onlineUsers = require('../onlineUsers');
+const User = require('../Models/User.model');
+const Notification = require('../Models/Notification.model');
+const mongoose = require('mongoose');
 
 const savePostLike = async (req, res) => {
     try {
@@ -7,10 +13,23 @@ const savePostLike = async (req, res) => {
         const likeExist = await Likes.findOne({ postId: postId });
         console.log("Like Exists ===>>", likeExist);
 
-        if (likeExist == null) {
+        if (likeExist == null) {//using socket here
+            const postUser = await Post.findOne({ _id: new mongoose.Types.ObjectId(postId) }).populate('userId', 'username');
+            const postLikedBy = await User.findOne({ _id: new mongoose.Types.ObjectId(userId) }, { _id: 0, username: 1 });
+
+            const io = socketManager.getIO();
+            const targetSocket = onlineUsers[postUser.userId._id];
             const postLike = await Likes.create({
                 postId: postId,
                 likesCounts: [userId]
+            })
+            //create notification for it 
+            console.log("Data for notifications is ", userId, postUser.userId._id);
+            const likeNotify = await Notification.create({ sender: userId, receiver: postUser.userId._id, notifyType: 'Like' });
+
+
+            io.to(targetSocket).emit('like-post', {
+                username: postLikedBy.username
             })
             return res.status(201).json({ message: 'Success' });
         }
@@ -21,10 +40,23 @@ const savePostLike = async (req, res) => {
             await likeExist.save()
             return res.status(200).json({ message: 'User Dislike the Post' });
         }
-        else {
+        else {//user socket here
+            const postUser = await Post.findOne({ _id: new mongoose.Types.ObjectId(postId) }).populate('userId', 'username');
+            const postLikedBy = await User.findOne({ _id: new mongoose.Types.ObjectId(userId) }, { _id: 0, username: 1 });
+
+            const io = socketManager.getIO();
+            const targetSocket = onlineUsers[postUser.userId._id];
+
             likeExist.likesCounts.push(userId);
             await likeExist.save()
+            console.log("Data for notifications is ", userId, postUser.userId._id);
+            const likeNotify = await Notification.create({ sender: userId, receiver: postUser.userId._id, notifyType: 'Like' });
+
+
             console.log("Like Saved", likeExist)
+            io.to(targetSocket).emit('like-post', {
+                username: postLikedBy.username
+            })
             return res.status(200).json({ message: 'User like the Post ' });
         }
 
@@ -39,7 +71,7 @@ const savePostLike = async (req, res) => {
 const sendPostLikes = async (req, res) => {
     try {
         const { userid } = req.query;
-       
+
 
         const likes = await Likes.find({ userId: userid });
 

@@ -335,6 +335,12 @@ socket.on("accept-request", (data) => {
 
 socket.on('post-upload', (postData) => {
     console.log("Post through socket is ", postData)
+
+})
+
+socket.on('like-post', (username) => {
+    const dot = document.getElementById('nav-notif-dot');
+    if (dot) dot.classList.remove('hidden');
     
 })
 
