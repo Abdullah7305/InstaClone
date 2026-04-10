@@ -3,8 +3,8 @@ const Router = express.Router();
 const { createMessage, userChatList, loadDirectMessages } = require('../Controllers/Message.controller');
 
 Router
-    .route('/sent')
-    .put(createMessage);
+    .route('/send')
+    .post(createMessage);
 
 Router
     .route('/chat/list')

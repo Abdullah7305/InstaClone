@@ -110,6 +110,10 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
+        .hidden {
+            display: none;
+        }
+
         .user-avatar {
             width: 48px;
             height: 48px;
@@ -292,10 +296,10 @@
             </div>
         </div>
 
-        <div class="input-bar">
+        <div class="input-bar " id="input-bar">
             <input id="msg-input" class="msg-input" placeholder="Message..."
                 onkeydown="if(event.key==='Enter') sendMessage()">
-            <button class="send-btn" onclick="sendMessage()">➤</button>
+            <button class="send-btn" id="send-mesg" >➤</button>
         </div>
 
     </div>

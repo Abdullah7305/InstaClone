@@ -40,11 +40,12 @@ const userChatList = async (req, res) => {
 const loadDirectMessages = async (req, res) => {
     try {
         const { senderId, receiverId } = req.query;
-        console.log("all ids are ", senderId, receiverId);
-        return res.status(200).json({ message: 'Success', messages: '' })
+        let messages = await Message.find({ sender: senderId, receiver: receiverId });
+        messages.length > 0 ? messages : [];
+        return res.status(200).json({ message: 'Success', userMessages: messages })
     } catch (error) {
         return res.status(500).json({ message: 'Failed', error: error.message })
     }
 }
 
-module.exports = { createMessage, userChatList,loadDirectMessages };
+module.exports = { createMessage, userChatList, loadDirectMessages };

@@ -22,113 +22,130 @@ exports.sendFollowData = async (req, res) => {
 
 exports.followRequest = async (req, res) => {
     try {
-        //use the follow collection change the status to requested
         const follower = req.body.userId;
         const following = req.params.userId;
 
+        // Fetch the following user's account status
+        const followingProfile = await User.findOne({ _id: new mongoose.Types.ObjectId(following) }, { _id: 0, accountStatus: 1 });
+        if (!followingProfile) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
-        const followingProfilePublic = await User.findOne({ _id: new mongoose.Types.ObjectId(following) }, { _id: 0, accountStatus: 1 })
+        // Check existing request status
+        const existingRequest = await FollowRequest.findOne({
+            follower: follower,
+            following: following
+        });
 
-        let requestSent = false;
-        //If follow request Exist
-        const isRequested = await FollowRequest.exists(
-            {
-                follower: follower, following: following,
-                requestStatus: 'Requested'
-            }
-        );
-        const isAccepted = await FollowRequest.exists(
-            {
-                follower: follower, following: following,
-                requestStatus: 'Accepted'
-            }
-        )
-        const isRejected = await FollowRequest.exists(
-            {
-                follower: follower, following: following,
-                requestStatus: 'Rejected'
-            }
-        );
-        if (isRequested || isAccepted) {//if user already reuqested and want to cancel the reuest ot to cancelt the following then
-            console.log("I am true here..");
+        let requestStatus = existingRequest ? existingRequest.requestStatus : null;
+
+        // If already following (accepted), allow unfollowing
+        if (requestStatus === 'Accepted') {
+            // Unfollow logic: remove from Follow collections and update request to 'Rejected' or delete
             let userFollowing = await UserFollow.findOne({ userId: follower });
-            userFollowing.following = userFollowing.following.filter(id => id != following)
-            await userFollowing.save()
-            await Promise.all([
-
-                FollowRequest.findOneAndUpdate(
-                    { follower: follower, following: following },
-                    { $set: { requestStatus: 'Rejected' } }
-                ),
-                Notification.deleteOne(
-                    { sender: follower, receiver: following, notifyType: 'Follow_Request' }
-                )
-            ])
-            return res.status(201).json({ message: `Rejected` })
-        }
-        else if (isRejected) {
-            //if use want to sned the request again then
-
-            if (followingProfilePublic.accountStatus == 'public') {
-                await FollowRequest.findOneAndUpdate(
-                    { follower: follower, following: following },
-                    { $set: { requestStatus: 'Accepted' } }
-                )
-                
-                return res.status(200).json({ message: 'Successfully follow the user...' })
+            if (userFollowing) {
+                userFollowing.following = userFollowing.following.filter(id => id.toString() !== following);
+                await userFollowing.save();
             }
-            else {
-                await Promise.all([
-                    FollowRequest.findOneAndUpdate(
-                        { follower: follower, following: following },
-                        { $set: { requestStatus: 'Requested' } }
-                    ),
-                    Notification.create({
-                        sender: follower,
-                        receiver: following,
-                        notifyType: 'Follow_Request'
-                    })
-                ])
-                requestSent = true;
+            let userFollowers = await UserFollow.findOne({ userId: following });
+            if (userFollowers) {
+                userFollowers.followers = userFollowers.followers.filter(id => id.toString() !== follower);
+                await userFollowers.save();
             }
-
-
+            await FollowRequest.findOneAndUpdate(
+                { follower: follower, following: following },
+                { $set: { requestStatus: 'Rejected' } }
+            );
+            return res.status(201).json({ message: 'Unfollowed' });
         }
-        else {//first time when the user will send the request 
-            await Promise.all([
-                await FollowRequest.create({
-                    follower: follower,
-                    following: following,
-                    requestStatus: 'Requested'
-                }),
-                await Notification.create({
-                    sender: follower,
-                    receiver: following,
-                    notifyType: 'Follow_Request'
-                })
-            ]);
-            requestSent = true;
 
-        }
-        if (requestSent === true) {
+        // If public account, directly follow (no request needed)
+        if (followingProfile.accountStatus === 'public') {
+            // Create or update request to 'Accepted'
+            await FollowRequest.findOneAndUpdate(
+                { follower: follower, following: following },
+                { $set: { requestStatus: 'Accepted' } },
+                { upsert: true, new: true }
+            );
+
+            // Update Follow collections
+            await UserFollow.findOneAndUpdate(
+                { userId: follower },
+                { $addToSet: { following: following } },
+                { upsert: true, new: true }
+            );
+            await UserFollow.findOneAndUpdate(
+                { userId: following },
+                { $addToSet: { followers: follower } },
+                { upsert: true, new: true }
+            );
+
+            // Send follow notification (not request)
+            await Notification.create({
+                sender: follower,
+                receiver: following,
+                notifyType: 'Follow'  // Assuming you have a 'Follow' type for direct follows
+            });
+
+            // Emit socket event for direct follow
             const targetSocketId = onlineUsers[following];
-            const io = socketManager.getIO();
-            const senderName = await Notification.findOne({ receiver: following }, { _id: 0, receiver: 0 }).populate('sender', 'username');
-            console.log("Sender name is ", senderName.sender.username);
-            console.log("Target Id is ", targetSocketId);
-            io.to(targetSocketId).emit('follow-request', {
-                senderName: senderName.sender.username,
-                notifyType: 'Follow_Request'
-            })
-            return res.status(200).json({ message: 'Requested ' });
+            if (targetSocketId) {
+                const io = socketManager.getIO();
+                const senderName = await User.findOne({ _id: follower }, { username: 1 });
+                io.to(targetSocketId).emit('direct-follow', {
+                    senderName: senderName.username,
+                    notifyType: 'Follow'
+                });
+            }
+
+            return res.status(200).json({ message: 'Successfully followed the user' });
         }
 
+        // For private accounts, handle request logic
+        if (requestStatus === 'Requested') {
+            // Cancel request
+            await FollowRequest.findOneAndUpdate(
+                { follower: follower, following: following },
+                { $set: { requestStatus: 'Rejected' } }
+            );
+            await Notification.deleteOne({
+                sender: follower,
+                receiver: following,
+                notifyType: 'Follow_Request'
+            });
+            return res.status(201).json({ message: 'Request cancelled' });
+        } else if (requestStatus === 'Rejected' || !existingRequest) {
+            // Send new request
+            await FollowRequest.findOneAndUpdate(
+                { follower: follower, following: following },
+                { $set: { requestStatus: 'Requested' } },
+                { upsert: true, new: true }
+            );
+            await Notification.create({
+                sender: follower,
+                receiver: following,
+                notifyType: 'Follow_Request'
+            });
+
+            // Emit socket event
+            const targetSocketId = onlineUsers[following];
+            if (targetSocketId) {
+                const io = socketManager.getIO();
+                const senderName = await User.findOne({ _id: follower }, { username: 1 });
+                io.to(targetSocketId).emit('follow-request', {
+                    senderName: senderName.username,
+                    notifyType: 'Follow_Request'
+                });
+            }
+
+            return res.status(200).json({ message: 'Request sent' });
+        }
 
     } catch (error) {
         console.log("Error in sending follow request", error.message);
-        return res.status(500).json({ message: `Failed ${error}` })
+        return res.status(500).json({ message: `Failed ${error.message}` });
     }
-}
+};
 
 exports.acceptRequest = async (req, res) => {
     try {
