@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Instaclone — Messages</title>
-
+    <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=DM+Sans:wght@300;400;500;600&display=swap"
         rel="stylesheet" />
 
@@ -299,7 +299,7 @@
         <div class="input-bar " id="input-bar">
             <input id="msg-input" class="msg-input" placeholder="Message..."
                 onkeydown="if(event.key==='Enter') sendMessage()">
-            <button class="send-btn" id="send-mesg" >➤</button>
+            <button class="send-btn" id="send-mesg">➤</button>
         </div>
 
     </div>

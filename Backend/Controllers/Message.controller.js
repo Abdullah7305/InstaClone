@@ -1,5 +1,7 @@
 const Message = require('../Models/Message.model');
 const Follow = require('../Models/Follow.model');
+const onlineUser = require('../onlineUsers');
+const socketManager = require('../socket');
 
 const createMessage = async (req, res) => {
     try {
@@ -15,6 +17,21 @@ const createMessage = async (req, res) => {
             receiver: receiverId,
             text: mesgText
         })
+
+        //sende message through socket 
+        if (saveMessage) {
+            const io = socketManager.getIO();
+            const targetSocket = onlineUser[receiverId];
+            console.log("targetSocket", targetSocket);
+            io.to(targetSocket).emit('send-message', {
+                sender: senderId,
+                receiver: receiverId,
+                text: mesgText
+            })
+
+        }
+
+
 
         return res.status(200).json({ message: 'Successfully sent message', message: saveMessage });
     } catch (error) {
@@ -40,9 +57,12 @@ const userChatList = async (req, res) => {
 const loadDirectMessages = async (req, res) => {
     try {
         const { senderId, receiverId } = req.query;
-        let messages = await Message.find({ sender: senderId, receiver: receiverId });
-        messages.length > 0 ? messages : [];
-        return res.status(200).json({ message: 'Success', userMessages: messages })
+        let messages = await Message.find({ $or: [{ sender: receiverId, receiver: senderId }, { sender: senderId, receiver: receiverId }] }).sort({ _id: 1 })
+        let userMessages = [...messages]
+        userMessages.length > 0 ? userMessages : [];
+
+
+        return res.status(200).json({ message: 'Success', userMessages: userMessages })
     } catch (error) {
         return res.status(500).json({ message: 'Failed', error: error.message })
     }

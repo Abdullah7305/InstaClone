@@ -10,20 +10,20 @@ const { changeAccountStatus } = require('../Controllers/Settings.controller');
 
 Router
     .route('/profile/:userId')
-    .put(upload.single('image'), editUserProfilePic)
-    .get(sendUserProfile)
+    .put(protect,upload.single('image'), editUserProfilePic)
+    .get(protect,sendUserProfile)
 
 Router
     .route('/posts/:userId')
-    .get(postsByUserId)
+    .get(protect,postsByUserId)
 
 Router
     .route('/suggestions/:userId')
-    .get(getSuggestions)
+    .get(protect,getSuggestions)
 
 Router
     .route('/accountStatus/:userid')
-    .patch(changeAccountStatus)
+    .patch(protect,changeAccountStatus)
 
 
 module.exports = Router;

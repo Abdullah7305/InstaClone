@@ -1,4 +1,5 @@
 const mesgBtn = document.getElementById('send-mesg');
+const socket = io('http://localhost:8000');
 
 function getUserFromLocalStorage() {
     return JSON.parse(localStorage.getItem('user'));
@@ -11,24 +12,27 @@ function filterImageAddress(imageUrl) {
     return imageUrl;
 }
 
-let activeUser = null; // will store USER ID
+let activeUser = null;     // current chat partner ID
+let messageArr = [];       // current chat messages in frontend state
 
 // ================= LOAD CHAT LIST =================
 async function loadChatSideList() {
     try {
+        const currentUser = getUserFromLocalStorage();
+        if (!currentUser) return;
+
         const response = await fetch(
-            `http://localhost:8000/message/chat/list?userId=${getUserFromLocalStorage()._id}`,
+            `http://localhost:8000/message/chat/list?userId=${currentUser._id}`,
             {
                 method: 'GET',
                 headers: {
-                    "authorization": `Bearer ${localStorage.getItem('token')}`
+                    authorization: `Bearer ${localStorage.getItem('token')}`
                 }
             }
         );
 
         const result = await response.json();
-        renderChatList(result.following);
-
+        renderChatList(result.following || []);
     } catch (error) {
         console.log("Error loading chat list:", error.message);
     }
@@ -55,7 +59,6 @@ function renderChatList(list) {
             </div>
         `;
 
-
         button.addEventListener('click', async () => {
             openChat(button, user, avatar);
             await loadDirectMessages(user._id);
@@ -65,20 +68,19 @@ function renderChatList(list) {
     });
 }
 
-// ================= OPEN CHAT (UI CONTROL) =================
+// ================= OPEN CHAT =================
 function openChat(el, user, avatar) {
     document.querySelectorAll('.user-item').forEach(i => i.classList.remove('active'));
     el.classList.add('active');
 
     activeUser = user._id;
+    messageArr = [];
 
     document.getElementById('chat-topbar').style.display = 'flex';
     document.getElementById('chat-avatar').src = avatar;
     document.getElementById('chat-name').textContent = user.username;
 
-
     document.querySelector('.input-bar').classList.remove('hidden');
-
 
     document.getElementById('messages-area').innerHTML = '';
 }
@@ -87,32 +89,36 @@ function openChat(el, user, avatar) {
 async function loadDirectMessages(receiverId) {
     try {
         const currentUser = getUserFromLocalStorage();
+        if (!currentUser) return;
 
         const response = await fetch(
             `http://localhost:8000/message/load?senderId=${currentUser._id}&receiverId=${receiverId}`,
             {
                 method: 'GET',
                 headers: {
-                    "authorization": `Bearer ${localStorage.getItem('token')}`
+                    authorization: `Bearer ${localStorage.getItem('token')}`
                 }
             }
         );
 
         const result = await response.json();
+        console.log("Messages are =>", result);
 
-        const messages = result.userMessages.map(msg => ({
+        const messages = (result.userMessages || []).map(msg => ({
             type: msg.sender === currentUser._id ? 'sent' : 'received',
-            text: msg.text
+            text: msg.text,
+            sender: msg.sender,
+            receiver: msg.receiver
         }));
 
-        renderMessages(messages);
-
+        messageArr = messages;
+        renderMessages(messageArr);
     } catch (error) {
         console.log("Error loading messages:", error.message);
     }
 }
 
-// ================= RENDER MESSAGES =================
+// ================= RENDER MESSAGES (FULL RENDER) =================
 function renderMessages(messages = []) {
     const area = document.getElementById('messages-area');
     area.innerHTML = '';
@@ -128,13 +134,25 @@ function renderMessages(messages = []) {
     }
 
     messages.forEach(m => {
-        const row = document.createElement('div');
-        row.className = `msg-row ${m.type}`;
-        row.innerHTML = `<div class="bubble">${m.text}</div>`;
-        area.appendChild(row);
+        appendMessage(m, false);
     });
 
     area.scrollTop = area.scrollHeight;
+}
+
+// ================= APPEND ONE MESSAGE =================
+function appendMessage(message, shouldScroll = true) {
+    const area = document.getElementById('messages-area');
+
+    const row = document.createElement('div');
+    row.className = `msg-row ${message.type}`;
+    row.innerHTML = `<div class="bubble">${message.text}</div>`;
+
+    area.appendChild(row);
+
+    if (shouldScroll) {
+        area.scrollTop = area.scrollHeight;
+    }
 }
 
 // ================= SEND MESSAGE =================
@@ -147,33 +165,90 @@ async function sendMessage() {
 
     try {
         const currentUser = getUserFromLocalStorage();
+        if (!currentUser) return;
 
-        await fetch(`http://localhost:8000/message/send`, {
+        const payload = {
+            mesgText: text,
+            senderId: currentUser._id,
+            receiverId: activeUser
+        };
+
+        // Save in backend
+        const response = await fetch('http://localhost:8000/message/send', {
             method: 'POST',
             headers: {
-                "Content-Type": "application/json",
-                "authorization": `Bearer ${localStorage.getItem('token')}`
+                'Content-Type': 'application/json',
+                authorization: `Bearer ${localStorage.getItem('token')}`
             },
-            body: JSON.stringify({
-                mesgText: text,
-                senderId: currentUser._id,
-                receiverId: activeUser
-            })
+            body: JSON.stringify(payload)
         });
 
+        const result = await response.json();
+        console.log("Send result =>", result);
+
+        // Optimistic UI update or use backend response if it returns saved message
+        const newMsg = {
+            type: 'sent',
+            text: text,
+            sender: currentUser._id,
+            receiver: activeUser
+        };
+
+        messageArr.push(newMsg);
+        appendMessage(newMsg);
+
         input.value = '';
-
-
-        await loadDirectMessages(activeUser);
-
     } catch (error) {
         console.log("Error sending message:", error.message);
     }
 }
 
-// ================= INIT =================
+// ============ MESSAGE SOCKET =============
+socket.on('connect', () => {
+    console.log("User Connected ", socket.id);
 
-mesgBtn.addEventListener('click', sendMessage)
+    const currentUser = getUserFromLocalStorage();
+    if (currentUser) {
+        socket.emit('register', currentUser._id);
+    }
+});
+
+socket.on('send-message', (message) => {
+    console.log("Message through socket is ", message);
+
+    const currentUser = getUserFromLocalStorage();
+    if (!currentUser) return;
+
+    // Only show live message in current open chat
+    const isCurrentChat =
+        (message.sender === activeUser && message.receiver === currentUser._id) ||
+        (message.sender === currentUser._id && message.receiver === activeUser);
+
+    if (!isCurrentChat) return;
+
+    const newMsg = {
+        type: message.sender === currentUser._id ? 'sent' : 'received',
+        text: message.text,
+        sender: message.sender,
+        receiver: message.receiver
+    };
+
+    // Prevent duplicate appending if same message already exists
+    const alreadyExists = messageArr.some(
+        m =>
+            m.text === newMsg.text &&
+            m.sender === newMsg.sender &&
+            m.receiver === newMsg.receiver
+    );
+
+    if (alreadyExists) return;
+
+    messageArr.push(newMsg);
+    appendMessage(newMsg);
+});
+
+// ================= INIT =================
+mesgBtn.addEventListener('click', sendMessage);
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadChatSideList();

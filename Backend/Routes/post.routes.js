@@ -7,30 +7,30 @@ const { createComment } = require('../Controllers/Comments.controller')
 const { savePostLike, sendPostLikes } = require("../Controllers/Like.controller")
 Router
     .route('/user/comment/:userId')
-    .post(createComment)
+    .post(protect, createComment)
 
 
 Router
     .route('/likes')
-    .post(savePostLike)
-    .get(sendPostLikes)
+    .post(protect, savePostLike)
+    .get(protect, sendPostLikes)
 
 Router
     .route('/allposts')
-    .get(sendAllPosts)
+    .get(protect,sendAllPosts)
 
 Router
     .route('/:userId')
-    .post(upload.single('image'), createPost)
-    .get(postsByUserId)
+    .post(protect,upload.single('image'), createPost)
+    .get(protect,postsByUserId)
 
 Router
     .route('/delete')
-    .delete(deletePost)
+    .delete(protect,deletePost)
 
 Router
     .route('/edit/:postId')
-    .put(upload.single('image'), editPost)
+    .put(protect,upload.single('image'), editPost)
 
 
 

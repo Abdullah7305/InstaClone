@@ -5,14 +5,14 @@ const { sendFollowData, followRequest, acceptRequest, rejectRequest } = require(
 
 Router
     .route('/follow/:userId')
-    .get(sendFollowData)
-    .post(followRequest)
+    .get(protect,sendFollowData)
+    .post(protect,followRequest)
 Router
     .route('/reject')
-    .put(rejectRequest)
+    .put(protect,rejectRequest)
 
 Router
     .route('/accept')
-    .put(acceptRequest)
+    .put(protect,acceptRequest)
 
 module.exports = Router;

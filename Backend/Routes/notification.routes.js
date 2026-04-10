@@ -5,15 +5,15 @@ const protect = require('../Middlewares/jwt.middleware')
 
 Router
     .route('/:notifyId')
-    .get(sendNotification)
+    .get(protect,sendNotification)
 
 Router
     .route('/details/:notifyId')
-    .get(sendDetailedNotifications)
+    .get(protect,sendDetailedNotifications)
 
 Router
     .route('/delete')
-    .delete(deleteNotifcation)
+    .delete(protect,deleteNotifcation)
 
 
 
