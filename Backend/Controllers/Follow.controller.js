@@ -6,7 +6,7 @@ const socketManager = require('../socket');
 const onlineUsers = require('../onlineUsers');
 const mongoose = require('mongoose');
 
-exports.sendFollowData = async (req, res) => {
+const sendFollowData = async (req, res) => {
     try {
         const userId = req.params.userId;
         if (!userId || userId == undefined) {
@@ -20,7 +20,7 @@ exports.sendFollowData = async (req, res) => {
     }
 }
 
-exports.followRequest = async (req, res) => {
+const followRequest = async (req, res) => {
     try {
         const follower = req.body.userId;
         const following = req.params.userId;
@@ -147,7 +147,7 @@ exports.followRequest = async (req, res) => {
     }
 };
 
-exports.acceptRequest = async (req, res) => {
+const acceptRequest = async (req, res) => {
     try {
         const { sender, receiver } = req.body;
         console.log("Senrder and receiver are", sender, receiver);
@@ -200,7 +200,7 @@ exports.acceptRequest = async (req, res) => {
     }
 }
 
-exports.rejectRequest = async (req, res) => {
+const rejectRequest = async (req, res) => {
     try {
         const { sender, receiver } = req.body;
         if (!sender || !receiver) {
@@ -231,4 +231,6 @@ exports.rejectRequest = async (req, res) => {
         return res.status(500).json({ message: 'Failed', error: error.message })
     }
 }
+
+module.exports = { sendFollowData, followRequest, acceptRequest, rejectRequest };
 

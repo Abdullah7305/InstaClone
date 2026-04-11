@@ -16,6 +16,22 @@ const modalPreviewImg = document.getElementById('modal-preview-img');
 const fileUpload = document.getElementById('file-upload');
 const bioInput = document.getElementById('bio-input');
 
+// function isTokenExpired(token) {
+//     try {
+
+//         const decode = jwtDecode(token);
+//         const currentTime = Date.now();
+
+//         if (decode.exp < currentTime) {
+//             return true;
+//         }
+//     } catch (error) {
+//         return true;
+
+//     }
+
+// }
+
 // Track the card currently in edit mode and its original HTML
 let currentEditingCard = null;
 let currentOriginalContent = '';
@@ -666,6 +682,8 @@ saveProfileBtn.addEventListener('click', async (event) => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('token');
+
     await getFollowData();
     await renderAccountPosts();
     await loadLikes();

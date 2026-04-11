@@ -35,13 +35,13 @@ async function getSuggestedUser() {
         });
 
         const result = await response.json();
-      
+
         if (response.ok) {
 
             suggestionBox.innerHTML = ""; // clear once before loop
             SuggestionLoad = true;
             result.suggestions.forEach(user => {
-               
+
                 const element = renderSuggestions(user);
                 suggestionBox.appendChild(element);
             });

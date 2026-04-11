@@ -1,18 +1,23 @@
 const express = require('express');
 const Router = express.Router();
 const protect = require('../Middlewares/jwt.middleware');
-const { createMessage, userChatList, loadDirectMessages } = require('../Controllers/Message.controller');
+const { sentMessageCount } = require('../Controllers/Notification.controller');
+const { createMessage, userChatList, loadDirectMessages, loadMessageNotifications } = require('../Controllers/Message.controller');
 
 Router
     .route('/send')
-    .post(protect,createMessage);
+    .post(protect, createMessage);
 
 Router
     .route('/chat/list')
-    .get(protect,userChatList)
+    .get(protect, userChatList)
 
 Router
     .route('/load')
-    .get(protect,loadDirectMessages)
+    .get(protect, loadDirectMessages)
+
+Router
+    .route('/notify-num')
+    .get(sentMessageCount)
 
 module.exports = Router;

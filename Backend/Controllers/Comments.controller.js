@@ -6,7 +6,7 @@ const onlineUsers = require('../onlineUsers');
 const Notification = require('../Models/Notification.model');
 const mongoose = require('mongoose');
 
-exports.createComment = async (req, res) => {
+const createComment = async (req, res) => {
     try {
         const { postId, commentText } = req.body;
         const { userId } = req.params; // The user who is commenting
@@ -52,5 +52,18 @@ exports.createComment = async (req, res) => {
         return res.status(500).json({ message: 'Failed', error: error.message });
     }
 };
+
+const loadComments = async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const comments = await Comment.find({ postId: postId }).populate('userId', 'username');
+        return res.status(200).json({ message: 'Success', data: comments });
+    } catch (error) {
+        console.error("Error in loadComments:", error);
+        return res.status(500).json({ message: 'Failed', error: error.message });
+    }
+};
+
+module.exports = { createComment, loadComments };
 
 

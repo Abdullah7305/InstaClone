@@ -14,7 +14,7 @@ exports.createFilePath = (filePath) => {
 
 }
 
-exports.createPost = async ({ userId, title, description, filePath }) => {
+exports.createPostService = async ({ userId, title, description, filePath }) => {
     const post = await Post.create({
         userId: userId,
         title: title,

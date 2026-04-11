@@ -5,6 +5,25 @@ const postsComments = [];
 
 let accountId = '';
 
+// Fallback cookie helper in 
+
+
+function isTokenExpired(token) {
+    try {
+
+        const decode = jwtDecode(token);
+        const currentTime = Math.floor(Date.now() / 1000);
+
+        if (decode.exp < currentTime) {
+            return true;
+        }
+    } catch (error) {
+        return true;
+
+    }
+
+}
+
 // --- Helper Functions ---
 
 function getUserFromLocalStorage() {
@@ -33,7 +52,7 @@ function populateAccountData(result) {
 }
 
 // --------------Comment-------------------
-async function postComment(postId, commentText) {
+async function postCommentToServer(postId, commentText) {
     try {
         const user = getUserFromLocalStorage();
         console.log("User id is ", user._id)
@@ -45,7 +64,7 @@ async function postComment(postId, commentText) {
                 "authorization": `Bearer ${localStorage.getItem('token')}`,
                 "content-type": "application/json"
             },
-            
+
             body: JSON.stringify({ postId: postId, commentText: commentText })
         });
         const result = await response.json();
@@ -334,7 +353,7 @@ function createPostCard(postData, username, pfp) {
     sendBtn.addEventListener('click', () => {
         const val = commentInput.value.trim();
         if (val) {
-            postComment(postData._id, val);
+            postCommentToServer(postData._id, val);
 
 
             const newCommentDiv = document.createElement('div');
@@ -407,6 +426,10 @@ followBtn.addEventListener('click', async () => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('token');
+    if (!token || isTokenExpired(token)) {
+        window.location.href = 'Login.html'
+    }
     await profileUser();
     await loadLikesForUser();
 });

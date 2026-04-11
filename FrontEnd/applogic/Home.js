@@ -1,3 +1,4 @@
+// const jwtDe
 const fileInput = document.getElementById('create-post-file');
 const postTitle = document.getElementById('post-title');
 const postDescription = document.getElementById('post-caption');
@@ -7,6 +8,22 @@ const createForm = document.getElementById('create-post-form');
 const submitPostBtn = document.getElementById("submit-post-btn");
 const homeProfilePic = document.getElementById('home-profile-pic');
 const homeProfileName = document.getElementById('home-profile-name');
+
+function isTokenExpired(token) {
+    try {
+
+        const decode = jwtDecode(token);
+        const currentTime = Date.now();
+
+        if (decode.exp < currentTime) {
+            return true;
+        }
+    } catch (error) {
+        return true;
+
+    }
+
+}
 
 const socket = io("http://localhost:8000");
 
@@ -56,7 +73,7 @@ async function likePostEvent(e, likeCountText) {
 }
 
 // -----------COMMENT POST-----------
-async function postComment(postId, commentText) {
+async function postCommentToServer(postId, commentText) {
     try {
         const user = getUserFromLocalStorage();
         const response = await fetch(`http://localhost:8000/post/user/comment/${user._id}`, {
@@ -73,6 +90,7 @@ async function postComment(postId, commentText) {
         console.log('Comment Posting Error is ', error.message);
     }
 }
+
 // --- Preview the Image ---
 function handleImagePreview(event) {
     const file = event.target.files[0];
@@ -165,7 +183,6 @@ function createPostCard(postData) {
     const authorUsername = postData.username || user.username || 'User';
     const authorPfpPath = postData.profilePicPathUrl ? filterImageAddress(postData.profilePicPathUrl) : userPfp;
     if (postData.userId != user._id) {
-
         header.innerHTML = `<img class="w-10 h-10 rounded-full object-cover border border-[#3e3e3e]" src="${authorPfpPath ? `http://localhost:8000/uploads/${authorPfpPath}` : fallbackImage}" onerror="this.src='${fallbackImage}'"><a href="UserProfile.html?accountId=${postData.userId}" class="font-bold text-sm text-white">${authorUsername}</a>`;
     }
     else {
@@ -176,43 +193,51 @@ function createPostCard(postData) {
     const cleanPostImg = postData.imageUrl ? filterImageAddress(postData.imageUrl) : null;
     imgWrap.className = 'w-full aspect-video bg-black overflow-hidden';
     imgWrap.innerHTML = `<img class="w-full h-full object-cover" src="${cleanPostImg ? `http://localhost:8000/uploads/${cleanPostImg}` : fallbackImage}">`;
+
+    // Footer - ADDED COMMENT BUTTON HERE
     const footer = document.createElement('div');
     footer.className = 'p-4 flex flex-col gap-3';
     footer.innerHTML = `
-        <div class="flex items-center gap-2 text-white">
-            <button class="hover:text-pink-500 transition-all cursor-pointer bg-transparent border-none p-0">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        <div class="flex items-center gap-4 text-white">
+            <div class="flex items-center gap-2">
+                <button class="hover:text-pink-500 transition-all cursor-pointer bg-transparent border-none p-0">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                </button>
+                <span class="text-gray-400 text-sm font-medium">${postData.likesCount || 0}</span>
+            </div>
+            <button class="comment-trigger-btn hover:text-gray-300 transition-all cursor-pointer bg-transparent border-none p-0">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
             </button>
-            <span class="text-gray-400 text-sm font-medium">${postData.likesCount || 0}</span>
         </div>
-        <div class="font-bold text-lg text-white">${postData.title}</div>
+        <div class="font-bold text-lg text-white mt-1">${postData.title}</div>
         <p class="text-gray-400 text-sm line-clamp-2">${postData.description}</p>
     `;
 
-    // Comment Section
+    // Comment Section (Now styled to fit inside the modal)
     const commentSection = document.createElement('div');
-    commentSection.className = 'px-4 pb-4 border-t border-[#2e2e2e] flex flex-col gap-2';
+    commentSection.className = 'flex flex-col h-full bg-[#1c1c1c] w-full';
 
     const commentList = document.createElement('div');
-    commentList.className = 'max-h-48 overflow-y-auto py-2 flex flex-col gap-3 custom-scrollbar';
+    commentList.className = 'flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar';
     commentList.style.scrollbarWidth = 'thin';
 
     const inputRow = document.createElement('div');
-    inputRow.className = 'flex items-center gap-2 bg-[#1a1a1a] rounded-lg px-3 py-2 border border-[#333]';
+    inputRow.className = 'flex items-center gap-2 bg-[#1a1a1a] px-4 py-3 border-t border-[#333] mt-auto';
     inputRow.innerHTML = `
-        <input type="text" placeholder="Add comment..." class="bg-transparent border-none outline-none text-xs text-white flex-1">
-        <button class="text-pink-500 cursor-pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+        <input type="text" placeholder="Add comment..." class="bg-transparent border-none outline-none text-sm text-white flex-1">
+        <button class="text-pink-500 cursor-pointer font-bold text-sm">Post</button>
     `;
 
     const input = inputRow.querySelector('input');
     const sendBtn = inputRow.querySelector('button');
 
-    const createCommentElement = (text, isReply = false) => {
+
+    const createCommentElement = (text, author = { username: 'Guest' }, isReply = false) => {
         const div = document.createElement('div');
         div.className = `flex flex-col gap-1 ${isReply ? 'ml-6 border-l-2 border-[#333] pl-3' : ''}`;
         div.innerHTML = `
             <div class="text-xs text-gray-300 bg-[#262626] p-2 rounded relative">
-                <span class="font-bold text-white mr-2">${user?.username || 'Guest'}</span>
+                <span class="font-bold text-white mr-2">${(author && author.username) || 'Guest'}</span>
                 <span>${text}</span>
                 <div class="flex gap-3 mt-2 text-[10px] font-semibold uppercase tracking-wider">
                     <button class="like-comment text-gray-500 hover:text-pink-500 transition-colors">Like</button>
@@ -221,13 +246,11 @@ function createPostCard(postData) {
             </div>
         `;
 
-        // Like Functionality
         div.querySelector('.like-comment').onclick = (e) => {
             e.target.classList.toggle('text-pink-500');
             e.target.innerText = e.target.innerText === 'LIKE' ? 'LIKED' : 'LIKE';
         };
 
-        // Reply Functionality
         div.querySelector('.reply-comment').onclick = () => {
             input.value = `@${user?.username} `;
             input.focus();
@@ -239,19 +262,46 @@ function createPostCard(postData) {
     sendBtn.onclick = async () => {
         if (!input.value.trim()) return;
         const isReply = input.value.startsWith('@');
-        await postComment(postData._id, input.value.trim());
+        await postCommentToServer(postData._id, input.value.trim());
         commentList.appendChild(createCommentElement(input.value, isReply));
         input.value = '';
         commentList.scrollTop = commentList.scrollHeight;
     };
 
     commentSection.append(commentList, inputRow);
-    card.append(header, imgWrap, footer, commentSection);
 
-    // wire like button behavior and initial like state
+    // IMPORTANT: We no longer append commentSection directly to the card.
+    card.append(header, imgWrap, footer);
+
+    // Wire up the new Comment button to open the modal
+    const commentTriggerBtn = footer.querySelector('.comment-trigger-btn');
+    commentTriggerBtn.addEventListener('click', () => {
+        const modal = document.getElementById('global-comment-modal');
+        const modalBody = document.getElementById('comment-modal-body');
+
+        // Clear old comments from the modal and inject this post's comments
+        modalBody.innerHTML = '';
+        modalBody.appendChild(commentSection);
+
+        // Populate existing comments for this post
+        if (Array.isArray(postData.comments) && postData.comments.length > 0) {
+            postData.comments.forEach(c => {
+                const author = c.user || { username: 'Guest' };
+                const text = c.commentText || '';
+                commentList.appendChild(createCommentElement(text, author, false));
+            });
+            // scroll to bottom so newest comments are visible
+            commentList.scrollTop = commentList.scrollHeight;
+        }
+
+        // Unhide the modal
+        modal.classList.remove('hidden');
+    });
+
+    // wire like button behavior and initial like state (Unchanged)
     try {
-        const likeBtn = footer.querySelector('button');
-        const likeCountText = footer.querySelector('span');
+        const likeBtn = footer.querySelector('button'); // This still safely grabs the FIRST button (the heart)
+        const likeCountText = footer.querySelector('span'); // This still safely grabs the FIRST span (the count)
         if (likeBtn && likeCountText) {
             likeBtn.id = postData._id;
 
@@ -350,12 +400,46 @@ socket.on('post-comment', (username) => {
     if (dot) dot.classList.remove('hidden');
 })
 
+// Show pink dot and increment message count when a new message arrives
+socket.on('send-message', (message) => {
+    console.log("Message through socket is ", message);
+    const dot = document.getElementById('nav-notif-dot');
+    if (dot) dot.classList.remove('hidden');
+
+    const mesgCountEl = document.getElementById('mesg-count');
+    if (mesgCountEl) {
+        const current = parseInt(mesgCountEl.textContent) || 0;
+        mesgCountEl.textContent = current + 1;
+    }
+});
+
+// Update like counts live when any user likes/unlikes a post
+socket.on('post-liked', (data) => {
+    try {
+        const { postId, likesCount } = data;
+        const likeBtn = document.getElementById(postId);
+        if (!likeBtn) return;
+        const likeCountText = likeBtn.parentElement.querySelector('span');
+        if (likeCountText) likeCountText.innerText = likesCount;
+    } catch (err) {
+        console.log('Error updating live like:', err);
+    }
+});
+
 
 
 fileInput.addEventListener('change', handleImagePreview);
 createForm.addEventListener('submit', (e) => e.preventDefault());
 submitPostBtn.addEventListener('click', submitPostData)
 document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+        const token = localStorage.getItem('token');
+        if (!token || isTokenExpired(token)) {
+            window.location.href = 'Login.html'
+        }
+        await notify()
+        await loadSentMessageCount();
+    });
     await renderAccountPosts()
 
 })

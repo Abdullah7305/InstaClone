@@ -1,6 +1,6 @@
 const { extractSuggestions } = require('../Services/suggestions.services')
 
-exports.getSuggestions = async (req, res) => {
+const getSuggestions = async (req, res) => {
     try {
         const userId = req.params.userId;
 
@@ -12,3 +12,5 @@ exports.getSuggestions = async (req, res) => {
         return res.status(200).json({ message: 'Success' })
     }
 }
+
+module.exports = { getSuggestions };

@@ -23,14 +23,33 @@ const savePostLike = async (req, res) => {
                 postId: postId,
                 likesCounts: [userId]
             })
-            //create notification for it 
-            console.log("Data for notifications is ", userId, postUser.userId._id);
-            const likeNotify = await Notification.create({ sender: userId, receiver: postUser.userId._id, notifyType: 'Like' });
-
-
-            io.to(targetSocket).emit('like-post', {
+            // create notification and targeted socket emit only if liker is NOT the post owner
+            const isOwner = postUser.userId._id.toString() === userId.toString();
+            console.log("Data for notifications is ", userId, postUser.userId._id, "isOwner:", isOwner);
+            if (!isOwner) {
+                await Notification.create({ sender: userId, receiver: postUser.userId._id, notifyType: 'Like' });
+                if (targetSocket) {
+                    io.to(targetSocket).emit('like-post', { username: postLikedBy.username });
+                }
+            }
+            // Broadcast live like update to all connected clients so feeds update in real-time
+            const actorSocket = onlineUsers[userId];
+            const payload = {
+                postId: postId,
+                likesCount: postLike.likesCounts.length,
                 username: postLikedBy.username
-            })
+            };
+            if (actorSocket) {
+                if (typeof io.except === 'function') {
+                    io.except(actorSocket).emit('post-liked', payload);
+                } else if (io.sockets && io.sockets.sockets && typeof io.sockets.sockets.forEach === 'function') {
+                    io.sockets.sockets.forEach((s) => { if (s.id !== actorSocket) s.emit('post-liked', payload); });
+                } else {
+                    io.emit('post-liked', payload);
+                }
+            } else {
+                io.emit('post-liked', payload);
+            }
             return res.status(201).json({ message: 'Success' });
         }
 
@@ -49,14 +68,34 @@ const savePostLike = async (req, res) => {
 
             likeExist.likesCounts.push(userId);
             await likeExist.save()
-            console.log("Data for notifications is ", userId, postUser.userId._id);
-            const likeNotify = await Notification.create({ sender: userId, receiver: postUser.userId._id, notifyType: 'Like' });
-
+            const isOwner = postUser.userId._id.toString() === userId.toString();
+            console.log("Data for notifications is ", userId, postUser.userId._id, "isOwner:", isOwner);
+            if (!isOwner) {
+                await Notification.create({ sender: userId, receiver: postUser.userId._id, notifyType: 'Like' });
+                if (targetSocket) {
+                    io.to(targetSocket).emit('like-post', { username: postLikedBy.username });
+                }
+            }
 
             console.log("Like Saved", likeExist)
-            io.to(targetSocket).emit('like-post', {
+            // Broadcast live like update to all connected clients so feeds update in real-time
+            const actorSocket = onlineUsers[userId];
+            const payload = {
+                postId: postId,
+                likesCount: likeExist.likesCounts.length,
                 username: postLikedBy.username
-            })
+            };
+            if (actorSocket) {
+                if (typeof io.except === 'function') {
+                    io.except(actorSocket).emit('post-liked', payload);
+                } else if (io.sockets && io.sockets.sockets && typeof io.sockets.sockets.forEach === 'function') {
+                    io.sockets.sockets.forEach((s) => { if (s.id !== actorSocket) s.emit('post-liked', payload); });
+                } else {
+                    io.emit('post-liked', payload);
+                }
+            } else {
+                io.emit('post-liked', payload);
+            }
             return res.status(200).json({ message: 'User like the Post ' });
         }
 

@@ -1,6 +1,22 @@
 const mesgBtn = document.getElementById('send-mesg');
 const socket = io('http://localhost:8000');
 
+function isTokenExpired(token) {
+    try {
+
+        const decode = jwtDecode(token);
+        const currentTime = Math.floor(Date.now() / 1000);
+
+        if (decode.exp < currentTime) {
+            return true;
+        }
+    } catch (error) {
+        return true;
+
+    }
+
+}
+
 function getUserFromLocalStorage() {
     return JSON.parse(localStorage.getItem('user'));
 }
@@ -251,5 +267,9 @@ socket.on('send-message', (message) => {
 mesgBtn.addEventListener('click', sendMessage);
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('token');
+    if (!token || isTokenExpired(token)) {
+        window.location.href = 'Login.html'
+    }
     await loadChatSideList();
 });

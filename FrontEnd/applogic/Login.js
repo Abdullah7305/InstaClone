@@ -40,9 +40,11 @@ async function loginRequest(event) {
             body: JSON.stringify(loginData)
         });
         const result = await response.json();
+        console.log("Result on login is ", result);
         if (response.ok) {
-            localStorage.setItem("token", result.token);
+            // setTokenCookie(result.token);
             localStorage.setItem("user", JSON.stringify(result.user));
+            localStorage.setItem("token", (result.token));
             document.location.href = "Home.html";
         }
         console.log("Result While loggin in is ", result);

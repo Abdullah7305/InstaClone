@@ -4,6 +4,8 @@ const notificationArea = document.getElementById('notification-area');
 let notificationsArr = [];
 
 
+
+
 function getUserFromLocalStorage() {
     const user = JSON.parse(localStorage.getItem('user'));
     return user;
@@ -176,6 +178,27 @@ function postComment(notification) {
     notificationArea.append(div);
 }
 
+function messageNotification(notification) {
+    const div = document.createElement("div");
+    div.className = "bg-neutral-900 p-3 rounded-lg mb-2 flex justify-between items-center";
+
+    const text = document.createElement("p");
+    text.className = "text-white text-sm";
+    text.innerText = `${notification.sender.username} sent you a message`;
+
+    const btn = document.createElement("button");
+    btn.className = "text-white text-xs";
+    btn.innerText = "✕";
+    btn.id = notification._id;
+    btn.addEventListener('click', (e) => {
+        handleDeleteNotification(e);
+        div.remove();
+    })
+
+    div.append(text, btn);
+    notificationArea.append(div);
+}
+
 function renderNotification(notifications) {
     console.log("Notification Result", notifications);
 
@@ -197,6 +220,9 @@ function renderNotification(notifications) {
             }
             else if (notification.notifyType == 'Comment') {
                 postComment(notification);
+            }
+            else if (notification.notifyType == 'Message') {
+                messageNotification(notification);
             }
         })
 
@@ -280,17 +306,28 @@ async function acceptRequest(e) {
     }
 }
 
+// -------------MESSAGE NOTIFICATION HANDLER--------------------------
+
+async function loadSentMessageCount() {
+    try {
+        const response = await fetch(`http://localhost:8000/message/notify-num?receiverId=${getUserFromLocalStorage()._id}`)
+        const result = await response.json();
+        const mesgNotify = document.getElementById('mesg-count').textContent = result.messageNotify.length;
+        console.log("Message Count is ", result);
+    } catch (error) {
+        console.log("Error in loading the message count is ", error.message)
+    }
+}
+
 notificationBtn.addEventListener('click', getDetailedNotification);
 
 closedNotification.addEventListener('click', toggleNotifications);
 
-document.addEventListener('DOMContentLoaded', async () => {
-    await notify()
-})
+
 
 window.addEventListener('click', (event) => {
     const box = document.getElementById('notification-box');
     if (event.target == box) {
         box.classList.add('hidden');
     }
-})
+});

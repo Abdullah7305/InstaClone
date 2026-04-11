@@ -5,10 +5,10 @@ const Follow = require('../Models/Follow.model')
 const User = require('../Models/User.model')
 const socketManager = require('../socket');
 const onlineUser = require('../onlineUsers');
-const { createFilePath, createPost, updatePost, deletePostFunc } = require('../Services/post.services')
+const { createFilePath, createPostService, updatePost, deletePostFunc } = require('../Services/post.services')
 
 
-exports.createPost = async (req, res) => {
+const createPost = async (req, res) => {
     try {
         const userId = req.params.userId;
 
@@ -23,7 +23,7 @@ exports.createPost = async (req, res) => {
 
         let filePath = createFilePath(req.file.path);
 
-        const post = await createPost({ userId, title, description, filePath })
+        const post = await createPostService({ userId, title, description, filePath })
 
 
         if (followingIds) {
@@ -45,7 +45,7 @@ exports.createPost = async (req, res) => {
     }
 }
 
-exports.sendAllPosts = async (req, res) => {
+const sendAllPosts = async (req, res) => {
     try {
         const { userId } = req.query;
         const followDoc = await Follow.findOne({ userId: userId });
@@ -122,7 +122,7 @@ exports.sendAllPosts = async (req, res) => {
 
 
 
-exports.postsByUserId = async (req, res) => {
+const postsByUserId = async (req, res) => {
     try {
         const userId = req.params.userId;
 
@@ -192,7 +192,7 @@ exports.postsByUserId = async (req, res) => {
 
 
 
-exports.editPost = async (req, res) => {
+const editPost = async (req, res) => {
     try {
         const postId = req.params.postId;
         const { title, description } = req.body;
@@ -218,7 +218,7 @@ exports.editPost = async (req, res) => {
 
 
 
-exports.deletePost = async (req, res) => {
+const deletePost = async (req, res) => {
     try {
         const postId = req.body.postId;
         if (!postId || postId == undefined) {
@@ -242,3 +242,5 @@ exports.deletePost = async (req, res) => {
         return res.status(500).json({ message: `Failed while sending post to user`, error: error })
     }
 }
+
+module.exports = { createPost, sendAllPosts, postsByUserId, editPost, deletePost };

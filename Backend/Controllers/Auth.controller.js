@@ -5,7 +5,7 @@ const { checkRequestBody, findUser, saveUser } = require('../Services/auth.servi
 const { bcryptPassword } = require('../Services/bcrypt.services')
 
 //signup-post -req-function executes
-exports.createAccount = async (req, res) => {
+const createAccount = async (req, res) => {
     try {
 
         const { name, username, email, password } = req.body;
@@ -37,7 +37,7 @@ exports.createAccount = async (req, res) => {
 
 
 //for signin we execute this one  
-exports.verifyLoginAccount = async (req, res) => {
+const verifyLoginAccount = async (req, res) => {
     try {
         console.log("Request hitting....")
         const { email, password } = req.body;
@@ -62,3 +62,5 @@ exports.verifyLoginAccount = async (req, res) => {
         res.status(500).json({ message: 'Error while verifying user ', error: error })
     }
 }
+
+module.exports = { createAccount, verifyLoginAccount };

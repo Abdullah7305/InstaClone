@@ -1,7 +1,7 @@
 const Notification = require('../Models/Notification.model');
-const { ObejctId, default: mongoose } = require('mongoose');
+const mongoose = require('mongoose');
 
-exports.sendNotification = async (req, res) => {
+const sendNotification = async (req, res) => {
     try {
         const userId = req.params.notifyId;
 
@@ -15,7 +15,7 @@ exports.sendNotification = async (req, res) => {
     }
 }
 
-exports.sendDetailedNotifications = async (req, res) => {
+const sendDetailedNotifications = async (req, res) => {
     try {
         const userId = req.params.notifyId;
         const userNotification = await Notification.find({ receiver: userId }, { receiver: 0 }).populate('sender', 'username');
@@ -28,7 +28,20 @@ exports.sendDetailedNotifications = async (req, res) => {
     }
 }
 
-exports.deleteNotifcation = async (req, res) => {
+const sentMessageCount = async (req, res) => {
+    try {
+        const { receiverId } = req.query;
+        console.log("Receiver is ", receiverId);
+        //retreive the distinct sender from the notifications and then send the array lentgh just
+        const messageNotify = await Notification.distinct('sender', { receiver: receiverId });
+        return res.status(200).json({ message: 'Success', messageNotify: messageNotify });
+
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed', error: error.message })
+    }
+}
+
+const deleteNotifcation = async (req, res) => {
     try {
         const { notificationId } = req.body;
         console.log("Notification id ", notificationId);
@@ -43,3 +56,5 @@ exports.deleteNotifcation = async (req, res) => {
         return res.status(500).json({ message: 'Failed', error: error })
     }
 }
+
+module.exports = { sendNotification, sendDetailedNotifications, sentMessageCount, deleteNotifcation };

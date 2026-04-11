@@ -6,7 +6,7 @@ const FollowRequest = require('../Models/FollowRequest.model');
 
 
 
-exports.editUserProfilePic = async (req, res) => {
+const editUserProfilePic = async (req, res) => {
     try {
         const { userId, bio } = req.body;
 
@@ -72,7 +72,7 @@ exports.editUserProfilePic = async (req, res) => {
     }
 }
 
-exports.sendUserProfile = async (req, res) => {
+const sendUserProfile = async (req, res) => {
     try {
         const { userId } = req.params;
         console.log("Request Hitting...", userId)
@@ -99,6 +99,9 @@ exports.sendUserProfile = async (req, res) => {
         console.log(error)
         return res.status(500).json({ message: 'Failed while sending Profile ', error: error })
     }
+
 }
+
+module.exports = { editUserProfilePic, sendUserProfile };
 
 

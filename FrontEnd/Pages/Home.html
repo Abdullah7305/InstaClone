@@ -479,7 +479,7 @@
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
                 Messages
-                <span class="badge ml-auto">3</span>
+                <span class="badge ml-auto" id="mesg-count"></span>
             </a>
 
             <button id="notification-btn" class="nav-btn flex items-center w-full">
@@ -552,44 +552,6 @@
             </div>
         </div>
 
-
-
-        <!-- STORIES BAR (TOP) -->
-        <div
-            style="grid-column:2; grid-row:1; border-bottom:1px solid var(--border); border-right:1px solid var(--border); padding:4px 10px;">
-            <div class="flex items-center gap-3 overflow-x-auto"
-                style="scrollbar-width:none; -webkit-overflow-scrolling:touch;">
-
-                <div class="story-bubble flex flex-col items-center gap-1 shrink-0">
-                    <div class="relative">
-                        <div class="ig-ring">
-                            <div class="ig-ring-inner">
-                                <img src="https://i.pravatar.cc/52?img=12" class="rounded-full object-cover"
-                                    style="width:32px;height:32px;" />
-                            </div>
-                        </div>
-                        <div class="absolute flex items-center justify-center text-white font-bold rounded-full"
-                            style="width:14px;height:14px;bottom:-1px;right:-1px;background:var(--accent);border:2px solid var(--surface);font-size:.5rem;line-height:1;">
-                            +</div>
-                    </div>
-                    <span style="font-size:.60rem; color:var(--muted); white-space:nowrap;">Your story</span>
-                </div>
-
-                <div style="width:1px; height:32px; background:var(--border); flex-shrink:0; margin:0 2px;"></div>
-
-                <div id="stories-row" class="flex gap-3">
-                    <div class="story-bubble flex flex-col items-center gap-1 shrink-0">
-                        <div class="ig-ring">
-                            <div class="ig-ring-inner">
-                                <img src="https://i.pravatar.cc/52?img=33" class="rounded-full object-cover"
-                                    style="width:32px;height:32px;" />
-                            </div>
-                        </div>
-                        <span style="font-size:.60rem; color:var(--txt); white-space:nowrap;">john_doe</span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- MAIN CONTENT -->
         <main style="grid-column:2; grid-row:2; overflow-y:auto; border-right:1px solid var(--border); padding:16px;">
@@ -694,7 +656,67 @@
         </div>
     </div>
 
+    <div id="createModal"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:1000; justify-content:center; align-items:center; backdrop-filter:blur(4px);">
+    </div>
+
+    <div id="global-comment-modal"
+        class="hidden fixed inset-0 z-[1500] flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity">
+        <div
+            class="bg-[#1c1c1c] border border-[#2e2e2e] w-[90%] max-w-[400px] h-[65vh] max-h-[600px] rounded-xl overflow-hidden flex flex-col relative fade-in">
+            <div class="flex justify-between items-center p-4 border-b border-[#2e2e2e]">
+                <h3 class="text-white font-bold text-center w-full">Comments</h3>
+                <button id="close-comment-modal"
+                    class="text-gray-400 hover:text-white absolute right-4 transition-colors">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="comment-modal-body" class="flex flex-col flex-1 overflow-hidden">
+            </div>
+        </div>
+    </div>
+
     <script>
+        function setActive(el) {
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        // Modal Logic
+        function openCreateModal() {
+            document.getElementById('createModal').style.display = 'flex';
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').style.display = 'none';
+        }
+
+        // === NEW logic to close the comment modal ===
+        document.addEventListener('DOMContentLoaded', () => {
+            const commentModal = document.getElementById('global-comment-modal');
+            const closeCommentBtn = document.getElementById('close-comment-modal');
+
+            // Close button click
+            if (closeCommentBtn) {
+                closeCommentBtn.addEventListener('click', () => {
+                    commentModal.classList.add('hidden');
+                });
+            }
+
+            // Close when clicking outside the box
+            if (commentModal) {
+                commentModal.addEventListener('click', (e) => {
+                    if (e.target === commentModal) {
+                        commentModal.classList.add('hidden');
+                    }
+                });
+            }
+        });
         // Set Active Nav Link
         function setActive(el) {
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
